@@ -625,13 +625,26 @@ function Board({ role, myPersonId, ownerId, session }) {
   },[showToast,people,session]);
 
   const deletePerson = useCallback(async id=>{
+    const target = people.find(p=>p.id===id);
     setPeople(p=>p.filter(x=>x.id!==id));
     setTasks(p=>p.filter(t=>t.personId!==id));
     if(activePerson===id) setActivePerson("p1");
-    showToast("Person removed");
-    const { error } = await supabase.from("people").delete().eq("id", id);
-    if(error){ showToast("Couldn't delete, refreshing"); loadData(); }
-  },[activePerson,showToast,loadData]);
+
+    if(target?.userId){
+      const { data: { session: cur } } = await supabase.auth.getSession();
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/remove-user`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${cur.access_token}` },
+        body: JSON.stringify({ personId: id }),
+      });
+      if(!res.ok){ showToast("Couldn't fully remove, refreshing"); loadData(); return; }
+      showToast("Person and login removed");
+    } else {
+      const { error } = await supabase.from("people").delete().eq("id", id);
+      if(error){ showToast("Couldn't delete, refreshing"); loadData(); return; }
+      showToast("Person removed");
+    }
+  },[activePerson,showToast,loadData,people]);
 
   const createInvite = useCallback(async (person) => {
     const { data, error } = await supabase.from("invites").insert({
@@ -762,6 +775,17 @@ function Board({ role, myPersonId, ownerId, session }) {
                     <button onClick={()=>createInvite(p)} aria-label={`Invite ${p.name}`} title="Send invite link"
                       style={{background:"none",border:"none",cursor:"pointer",color:txt2,padding:6,borderRadius:6,minWidth:32,minHeight:32,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
                       <Link2 size={15}/>
+                    </button>
+                  )}
+                  {isAdmin && !p.isAll && (
+                    <button onClick={()=>{
+                        const msg = p.userId
+                          ? `Remove ${p.name}? This deletes their login and all their tickets. This cannot be undone.`
+                          : `Remove ${p.name}? This deletes all their tickets. This cannot be undone.`;
+                        if(window.confirm(msg)) deletePerson(p.id);
+                      }} aria-label={`Remove ${p.name}`} title="Remove person"
+                      style={{background:"none",border:"none",cursor:"pointer",color:txt2,padding:6,borderRadius:6,minWidth:32,minHeight:32,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                      <Trash2 size={15}/>
                     </button>
                   )}
                 </div>
@@ -1126,6 +1150,14 @@ function AppInner() {
           await supabase.from("invites").update({ used: true }).eq("id", invite.id);
         }
         localStorage.removeItem("ptl_pending_invite");
+      }
+
+      const adminEmails = (import.meta.env.VITE_ADMIN_EMAILS || "").split(",").map(e=>e.trim().toLowerCase()).filter(Boolean);
+      const isLockedAdmin = adminEmails.includes((session.user.email||"").toLowerCase());
+
+      if (isLockedAdmin) {
+        setRoleInfo({ role: "admin", myPersonId: null, ownerId: session.user.id });
+        return;
       }
 
       const { data: myPerson } = await supabase.from("people").select("id, owner_id").eq("user_id", session.user.id).maybeSingle();

@@ -53,6 +53,37 @@ npm run dev
 Just run `supabase-schema-v2.sql` — it only adds new columns, tables, and
 policies on top of what's there. Nothing destructive.
 
+## Removing people
+
+Click the trash icon next to a person's name. This deletes their tickets.
+If they already joined, it also deletes their login. They can't sign back in
+with that email and see old data.
+
+This requires the `remove-user` Edge Function. Deploy it once:
+
+```bash
+supabase functions deploy remove-user
+```
+
+No extra secrets needed. It uses the same service role key Supabase already
+provides to your functions.
+
+## Locking in admin access
+
+Your role is normally decided by a database lookup. If that lookup ever
+misfires, for example a stray record links your email to a person by
+mistake, you could get bumped into a member view of your own board.
+
+Fix this by locking your email in as admin. Add to `.env.local` and to your
+Vercel project's environment variables:
+
+```
+VITE_ADMIN_EMAILS=you@example.com
+```
+
+Separate multiple admins with commas. Anyone on this list always gets admin
+access, checked before any database lookup runs.
+
 ## How invites work
 
 1. As the admin, click the link icon next to a person's name in the sidebar
