@@ -9,11 +9,11 @@ import {
 
 /* ── constants ── */
 const COLUMNS = [
-  { id: "todo", label: "To Do", short: "To Do", color: "#6366f1", bgLight: "#eef2ff", bgDark: "#1e1b4b" },
+  { id: "todo", label: "Open", short: "Open", color: "#6366f1", bgLight: "#eef2ff", bgDark: "#1e1b4b" },
   { id: "progress", label: "In Progress", short: "Active", color: "#1b4f8c", bgLight: "#f0fdfa", bgDark: "#042f2e" },
-  { id: "review", label: "Review", short: "Review", color: "#d97706", bgLight: "#fffbeb", bgDark: "#451a03" },
+  { id: "review", label: "Pending Review", short: "Review", color: "#d97706", bgLight: "#fffbeb", bgDark: "#451a03" },
   { id: "blocked", label: "Blocked", short: "Blocked", color: "#ef4444", bgLight: "#fef2f2", bgDark: "#450a0a" },
-  { id: "done", label: "Done", short: "Done", color: "#16a34a", bgLight: "#f0fdf4", bgDark: "#052e16" },
+  { id: "done", label: "Resolved", short: "Solved", color: "#16a34a", bgLight: "#f0fdf4", bgDark: "#052e16" },
 ];
 const PRIORITIES = [
   { id: "urgent", label: "Urgent", color: "#dc2626" },
@@ -21,7 +21,7 @@ const PRIORITIES = [
   { id: "medium", label: "Medium", color: "#d97706" },
   { id: "low", label: "Low", color: "#6b7280" },
 ];
-const TAGS = ["Design", "Dev", "Strategy", "Content", "Meeting", "Follow-up", "Bug", "Feature"];
+const TAGS = ["Hardware", "Software", "Network", "Account Access", "Maintenance", "Bug", "Feature Request", "General Support"];
 const genId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
 /* ── hooks ── */
@@ -130,7 +130,7 @@ function SingleToast({ toast, onDismiss }) {
 }
 
 /* ── task card ── */
-function TaskCard({ task, dark, onEdit, onDelete, onMove, columns, people, isMobile, onTouchDragStart, isAdmin }) {
+function TaskCard({ task, dark, onEdit, onDelete, onMove, columns, people, isMobile, onTouchDragStart, isAdmin, ticketNo }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const pri = PRIORITIES.find(p=>p.id===task.priority);
   const person = people.find(p=>p.id===task.personId);
@@ -162,7 +162,7 @@ function TaskCard({ task, dark, onEdit, onDelete, onMove, columns, people, isMob
       onDragStart={e=>{e.dataTransfer.setData("taskId",task.id);e.currentTarget.style.opacity="0.4";}}
       onDragEnd={e=>{e.currentTarget.style.opacity="1";}}
       onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}
-      role="article" aria-label={`Task: ${task.title}`}
+      role="article" aria-label={`Ticket: ${task.title}`}
       style={{background:dark?"#1e293b":"#ffffff",borderRadius:12,padding:"14px 16px",cursor:isMobile?"default":"grab",border:`1px solid ${dark?"#334155":"#e2e8f0"}`,transition:"all 200ms cubic-bezier(0.4,0,0.2,1)",position:"relative",marginBottom:10,touchAction:"pan-y",WebkitUserSelect:"none",userSelect:"none"}}
       onMouseEnter={!isMobile?e=>{e.currentTarget.style.transform="translateY(-1px)";e.currentTarget.style.boxShadow=dark?"0 4px 14px rgba(0,0,0,0.3)":"0 4px 14px rgba(0,0,0,0.07)";}:undefined}
       onMouseLeave={!isMobile?e=>{e.currentTarget.style.transform="translateY(0)";e.currentTarget.style.boxShadow="none";}:undefined}
@@ -170,9 +170,12 @@ function TaskCard({ task, dark, onEdit, onDelete, onMove, columns, people, isMob
       <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:8}}>
         <div style={{display:"flex",alignItems:"center",gap:6,flex:1,minWidth:0}}>
           {!isMobile && <GripVertical size={14} style={{color:dark?"#475569":"#cbd5e1",flexShrink:0}} />}
-          <span style={{fontSize:14,fontWeight:500,color:dark?"#e2e8f0":"#1e293b",lineHeight:1.4}}>{task.title}</span>
+          <div style={{minWidth:0}}>
+            {ticketNo && <div style={{fontSize:10.5,fontWeight:600,color:dark?"#64748b":"#94a3b8",letterSpacing:"0.03em",marginBottom:2}}>{ticketNo}</div>}
+            <span style={{fontSize:14,fontWeight:500,color:dark?"#e2e8f0":"#1e293b",lineHeight:1.4}}>{task.title}</span>
+          </div>
         </div>
-        <button onClick={e=>{e.stopPropagation();setMenuOpen(!menuOpen);}} aria-label="Task actions"
+        <button onClick={e=>{e.stopPropagation();setMenuOpen(!menuOpen);}} aria-label="Ticket actions"
           style={{background:"none",border:"none",cursor:"pointer",padding:8,color:dark?"#64748b":"#94a3b8",borderRadius:6,minWidth:32,minHeight:32,display:"flex",alignItems:"center",justifyContent:"center"}}>
           <MoreHorizontal size={18}/>
         </button>
@@ -205,7 +208,7 @@ function TaskCard({ task, dark, onEdit, onDelete, onMove, columns, people, isMob
 }
 
 /* ── compact mobile card ── */
-function MiniCard({ task, dark, onEdit, onDelete, onMove, columns, people, onTouchDragStart, isAdmin }) {
+function MiniCard({ task, dark, onEdit, onDelete, onMove, columns, people, onTouchDragStart, isAdmin, ticketNo }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const pri = PRIORITIES.find(p=>p.id===task.priority);
   const person = people.find(p=>p.id===task.personId);
@@ -254,7 +257,7 @@ function MiniCard({ task, dark, onEdit, onDelete, onMove, columns, people, onTou
         <div style={{position:"fixed",inset:0,zIndex:90,background:"rgba(0,0,0,0.4)"}} onClick={e=>{e.stopPropagation();setMenuOpen(false);}} />
         <div style={{position:"fixed",bottom:0,left:0,right:0,zIndex:91,background:dark?"#1e293b":"#fff",borderRadius:"16px 16px 0 0",padding:"8px 0",paddingBottom:"calc(12px + env(safe-area-inset-bottom, 16px))",boxShadow:"0 -8px 30px rgba(0,0,0,0.2)",animation:"sheetUp 200ms ease-out"}}>
           <div style={{width:36,height:4,borderRadius:2,background:dark?"#475569":"#cbd5e1",margin:"6px auto 4px"}}/>
-          <div style={{padding:"8px 20px 4px"}}><span style={{fontSize:15,fontWeight:600,color:dark?"#e2e8f0":"#1e293b"}}>{task.title}</span>
+          <div style={{padding:"8px 20px 4px"}}>{ticketNo && <div style={{fontSize:11,fontWeight:600,color:dark?"#64748b":"#94a3b8",letterSpacing:"0.03em",marginBottom:2}}>{ticketNo}</div>}<span style={{fontSize:15,fontWeight:600,color:dark?"#e2e8f0":"#1e293b"}}>{task.title}</span>
             {task.description&&<p style={{fontSize:13,color:dark?"#94a3b8":"#64748b",marginTop:4}}>{task.description}</p>}
             <div style={{display:"flex",gap:6,marginTop:6,flexWrap:"wrap"}}>
               {pri&&<span style={{fontSize:11,fontWeight:600,color:pri.color,background:`${pri.color}15`,padding:"2px 8px",borderRadius:5}}>{pri.label}</span>}
@@ -304,7 +307,7 @@ function ModalShell({ onClose, dark, isMobile, title, children, footer }) {
 }
 
 /* ── task modal ── */
-function TaskModal({ task, onSave, onClose, dark, people, isMobile }) {
+function TaskModal({ task, onSave, onClose, dark, people, isMobile, ticketNo }) {
   const isEdit=!!task?.id;
   const [f,setF]=useState({title:task?.title||"",description:task?.description||"",priority:task?.priority||"medium",column:task?.column||"todo",personId:task?.personId||(people.find(p=>!p.isAll)?.id||""),dueDate:task?.dueDate||"",tags:task?.tags||[],subtasks:task?.subtasks||[]});
   const [sub,setSub]=useState("");
@@ -317,19 +320,19 @@ function TaskModal({ task, onSave, onClose, dark, people, isMobile }) {
     setSaving(false);
   };
   return (
-    <ModalShell onClose={onClose} dark={dark} isMobile={isMobile} title={isEdit?"Edit Task":"New Task"} footer={<><MBtn label="Cancel" dark={dark} ghost onClick={onClose} disabled={saving}/><MBtn label={saving?"Saving...":(isEdit?"Save":"Create Task")} onClick={submit} disabled={!f.title.trim()||saving}/></>}>
+    <ModalShell onClose={onClose} dark={dark} isMobile={isMobile} title={isEdit?`Edit Ticket${ticketNo?` · ${ticketNo}`:""}`:"New Ticket"} footer={<><MBtn label="Cancel" dark={dark} ghost onClick={onClose} disabled={saving}/><MBtn label={saving?"Saving...":(isEdit?"Save":"Create Ticket")} onClick={submit} disabled={!f.title.trim()||saving}/></>}>
       <div style={{display:"flex",flexDirection:"column",gap:16}}>
-        <Fld label="Title" dark={dark}><input value={f.title} onChange={e=>up("title",e.target.value)} placeholder="What needs to be done?" style={inp(dark)}/></Fld>
+        <Fld label="Title" dark={dark}><input value={f.title} onChange={e=>up("title",e.target.value)} placeholder="Describe the issue or request" style={inp(dark)}/></Fld>
         <Fld label="Description" dark={dark}><textarea value={f.description} onChange={e=>up("description",e.target.value)} placeholder="Add details..." rows={3} style={{...inp(dark),resize:"vertical",fontFamily:"inherit"}}/></Fld>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-          <Fld label="Person" dark={dark}><select value={f.personId} onChange={e=>up("personId",e.target.value)} style={inp(dark)}><option value="">Unassigned</option>{people.filter(p=>!p.isAll).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></Fld>
+          <Fld label="Requester" dark={dark}><select value={f.personId} onChange={e=>up("personId",e.target.value)} style={inp(dark)}><option value="">Unassigned</option>{people.filter(p=>!p.isAll).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></Fld>
           <Fld label="Priority" dark={dark}><select value={f.priority} onChange={e=>up("priority",e.target.value)} style={inp(dark)}>{PRIORITIES.map(p=><option key={p.id} value={p.id}>{p.label}</option>)}</select></Fld>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
           <Fld label="Status" dark={dark}><select value={f.column} onChange={e=>up("column",e.target.value)} style={inp(dark)}>{COLUMNS.map(c=><option key={c.id} value={c.id}>{c.label}</option>)}</select></Fld>
           <Fld label="Due Date" dark={dark}><input type="date" value={f.dueDate} onChange={e=>up("dueDate",e.target.value)} style={inp(dark)}/></Fld>
         </div>
-        <Fld label="Tags" dark={dark}><div style={{display:"flex",flexWrap:"wrap",gap:6}}>{TAGS.map(tag=><button key={tag} onClick={()=>up("tags",f.tags.includes(tag)?f.tags.filter(t=>t!==tag):[...f.tags,tag])} style={{padding:"6px 14px",borderRadius:8,fontSize:13,fontWeight:500,border:`1px solid ${f.tags.includes(tag)?"#1b4f8c":(dark?"#334155":"#e2e8f0")}`,background:f.tags.includes(tag)?"#1b4f8c15":"transparent",color:f.tags.includes(tag)?"#1b4f8c":(dark?"#94a3b8":"#64748b"),cursor:"pointer",transition:"all 150ms",minHeight:36}}>{tag}</button>)}</div></Fld>
+        <Fld label="Category" dark={dark}><div style={{display:"flex",flexWrap:"wrap",gap:6}}>{TAGS.map(tag=><button key={tag} onClick={()=>up("tags",f.tags.includes(tag)?f.tags.filter(t=>t!==tag):[...f.tags,tag])} style={{padding:"6px 14px",borderRadius:8,fontSize:13,fontWeight:500,border:`1px solid ${f.tags.includes(tag)?"#1b4f8c":(dark?"#334155":"#e2e8f0")}`,background:f.tags.includes(tag)?"#1b4f8c15":"transparent",color:f.tags.includes(tag)?"#1b4f8c":(dark?"#94a3b8":"#64748b"),cursor:"pointer",transition:"all 150ms",minHeight:36}}>{tag}</button>)}</div></Fld>
         <Fld label="Subtasks" dark={dark}>
           {f.subtasks.map(st=><div key={st.id} style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}><input type="checkbox" checked={st.done} onChange={()=>up("subtasks",f.subtasks.map(s=>s.id===st.id?{...s,done:!s.done}:s))} style={{accentColor:"#1b4f8c",width:18,height:18,cursor:"pointer"}}/><span style={{fontSize:14,color:st.done?(dark?"#64748b":"#94a3b8"):(dark?"#e2e8f0":"#334155"),textDecoration:st.done?"line-through":"none",flex:1}}>{st.text}</span><button onClick={()=>up("subtasks",f.subtasks.filter(s=>s.id!==st.id))} aria-label="Remove" style={{background:"none",border:"none",cursor:"pointer",color:"#94a3b8",padding:6,minWidth:32,minHeight:32,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:6}}><X size={16}/></button></div>)}
           <div style={{display:"flex",gap:8}}><input value={sub} onChange={e=>setSub(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&sub.trim()){up("subtasks",[...f.subtasks,{id:genId(),text:sub.trim(),done:false}]);setSub("");}}} placeholder="Add a subtask..." style={{...inp(dark),flex:1}}/><button onClick={()=>{if(!sub.trim())return;up("subtasks",[...f.subtasks,{id:genId(),text:sub.trim(),done:false}]);setSub("");}} aria-label="Add" style={{background:"#1b4f8c",color:"#fff",border:"none",borderRadius:10,padding:"0 16px",cursor:"pointer",fontSize:20,fontWeight:300,minHeight:46}}>+</button></div>
@@ -395,7 +398,7 @@ function Board({ role, myPersonId, ownerId, session }) {
   const [darkOverride, setDarkOverride] = useState(null);
   const dark = darkOverride !== null ? darkOverride : prefDark;
 
-  const [people, setPeople] = useState([{id:"p1",name:"All Tasks",isAll:true}]);
+  const [people, setPeople] = useState([{id:"p1",name:"All Tickets",isAll:true}]);
   const [tasks, setTasks] = useState([]);
   const [activePerson, setActivePerson] = useState("p1");
   const [view, setView] = useState("board");
@@ -495,7 +498,7 @@ function Board({ role, myPersonId, ownerId, session }) {
       supabase.from("tasks").select("*").order("created_at"),
     ]);
     const mappedPeople = (peopleRows||[]).map(p=>({id:p.id,name:p.name,role:p.role||"",userId:p.user_id||null}));
-    setPeople(isAdmin ? [{id:"p1",name:"All Tasks",isAll:true}, ...mappedPeople] : mappedPeople);
+    setPeople(isAdmin ? [{id:"p1",name:"All Tickets",isAll:true}, ...mappedPeople] : mappedPeople);
     setTasks((taskRows||[]).map(t=>({
       id:t.id, title:t.title, description:t.description||"", priority:t.priority,
       column:t.column_id, personId:t.person_id||"", dueDate:t.due_date||"",
@@ -526,6 +529,13 @@ function Board({ role, myPersonId, ownerId, session }) {
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [loadData]);
+
+  const ticketNumbers = useMemo(()=>{
+    const sorted = [...tasks].sort((a,b)=>new Date(a.createdAt||0)-new Date(b.createdAt||0));
+    const map = {};
+    sorted.forEach((t,i)=>{ map[t.id] = `TKT-${String(i+1).padStart(4,"0")}`; });
+    return map;
+  },[tasks]);
 
   const filtered = useMemo(()=>{let t=tasks;if(activePerson!=="p1")t=t.filter(tk=>tk.personId===activePerson);if(search)t=t.filter(tk=>tk.title.toLowerCase().includes(search.toLowerCase()));if(filterPri)t=t.filter(tk=>tk.priority===filterPri);return t;},[tasks,activePerson,search,filterPri]);
 
@@ -572,7 +582,7 @@ function Board({ role, myPersonId, ownerId, session }) {
       if(error) showToast("Couldn't save changes");
     }
     setTaskModal(null);
-    showToast(isNew?"Task created":"Task saved");
+    showToast(isNew?"Ticket created":"Ticket saved");
   },[showToast,tasks,isAdmin,session,ownerId,myPersonId]);
 
   const deleteTask = useCallback(async id=>{
@@ -581,7 +591,7 @@ function Board({ role, myPersonId, ownerId, session }) {
     const { error } = await supabase.from("tasks").delete().eq("id", id);
     if(error){ showToast("Couldn't delete, refreshing"); loadData(); return; }
     if(removed){
-      showToast("Task deleted", {
+      showToast("Ticket deleted", {
         label: "Undo",
         onClick: async () => {
           const row = {
@@ -595,7 +605,7 @@ function Board({ role, myPersonId, ownerId, session }) {
         }
       });
     } else {
-      showToast("Task deleted");
+      showToast("Ticket deleted");
     }
   },[showToast,loadData,tasks,isAdmin,session,ownerId]);
 
@@ -780,12 +790,12 @@ function Board({ role, myPersonId, ownerId, session }) {
               <div style={{display:"flex",alignItems:"center",gap:8,background:dark?"#1e293b":"#f1f5f9",borderRadius:10,padding:"8px 14px"}}><Search size={16} style={{color:txt2}}/><input ref={searchInputRef} value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search..." style={{border:"none",background:"transparent",outline:"none",fontSize:14,color:txt,width:140,fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif"}}/>{search?<button onClick={()=>setSearch("")} aria-label="Clear search" style={{background:"none",border:"none",color:txt2,cursor:"pointer",padding:0,display:"flex"}}><X size={14}/></button>:<kbd style={{fontSize:11,color:txt2,background:dark?"#0f172a":"#e2e8f0",padding:"2px 6px",borderRadius:4,fontFamily:"inherit"}}>⌘K</kbd>}</div>
             )}
             {!isMobile&&<select value={filterPri} onChange={e=>setFilterPri(e.target.value)} aria-label="Filter" style={{padding:"10px 34px 10px 14px",borderRadius:10,fontSize:13,border:`1px solid ${brd}`,background:dark?"#1e293b":"#f8fafc",color:txt,cursor:"pointer",outline:"none",minHeight:42,fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif"}}><option value="">All Priorities</option>{PRIORITIES.map(p=><option key={p.id} value={p.id}>{p.label}</option>)}</select>}
-            <button onClick={()=>setTaskModal({column:"todo",personId:activePerson==="p1"?"":activePerson})} aria-label="Create task" title={isMobile?undefined:"New task (N)"} style={{display:"flex",alignItems:"center",gap:6,...(isMobile?{width:42,height:42,borderRadius:12,justifyContent:"center",padding:0}:{padding:"10px 20px",borderRadius:10}),border:"none",background:"#1b4f8c",color:"#fff",cursor:"pointer",fontSize:14,fontWeight:600,transition:"all 150ms",minHeight:42}}><Plus size={18}/>{!isMobile&&"New Task"}</button>
+            <button onClick={()=>setTaskModal({column:"todo",personId:activePerson==="p1"?"":activePerson})} aria-label="Create ticket" title={isMobile?undefined:"New ticket (N)"} style={{display:"flex",alignItems:"center",gap:6,...(isMobile?{width:42,height:42,borderRadius:12,justifyContent:"center",padding:0}:{padding:"10px 20px",borderRadius:10}),border:"none",background:"#1b4f8c",color:"#fff",cursor:"pointer",fontSize:14,fontWeight:600,transition:"all 150ms",minHeight:42}}><Plus size={18}/>{!isMobile&&"New Ticket"}</button>
           </div>
         </header>
 
         {/* mobile search */}
-        {isMobile&&searchOpen&&<div style={{padding:"8px 16px",background:dark?"#0b1120":"#fff",borderBottom:`1px solid ${brd}`,display:"flex",gap:8}}><div style={{flex:1,display:"flex",alignItems:"center",gap:8,background:dark?"#1e293b":"#f1f5f9",borderRadius:10,padding:"8px 14px"}}><Search size={16} style={{color:txt2}}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search tasks..." autoFocus style={{border:"none",background:"transparent",outline:"none",fontSize:14,color:txt,width:"100%",fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif"}}/>{search&&<button onClick={()=>setSearch("")} aria-label="Clear search" style={{background:"none",border:"none",color:txt2,cursor:"pointer",padding:0,display:"flex"}}><X size={14}/></button>}</div><select value={filterPri} onChange={e=>setFilterPri(e.target.value)} style={{padding:"8px 30px 8px 10px",borderRadius:10,fontSize:13,border:`1px solid ${brd}`,background:dark?"#1e293b":"#f8fafc",color:txt,minHeight:42,fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif"}}><option value="">All</option>{PRIORITIES.map(p=><option key={p.id} value={p.id}>{p.label}</option>)}</select></div>}
+        {isMobile&&searchOpen&&<div style={{padding:"8px 16px",background:dark?"#0b1120":"#fff",borderBottom:`1px solid ${brd}`,display:"flex",gap:8}}><div style={{flex:1,display:"flex",alignItems:"center",gap:8,background:dark?"#1e293b":"#f1f5f9",borderRadius:10,padding:"8px 14px"}}><Search size={16} style={{color:txt2}}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search tickets..." autoFocus style={{border:"none",background:"transparent",outline:"none",fontSize:14,color:txt,width:"100%",fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif"}}/>{search&&<button onClick={()=>setSearch("")} aria-label="Clear search" style={{background:"none",border:"none",color:txt2,cursor:"pointer",padding:0,display:"flex"}}><X size={14}/></button>}</div><select value={filterPri} onChange={e=>setFilterPri(e.target.value)} style={{padding:"8px 30px 8px 10px",borderRadius:10,fontSize:13,border:`1px solid ${brd}`,background:dark?"#1e293b":"#f8fafc",color:txt,minHeight:42,fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif"}}><option value="">All</option>{PRIORITIES.map(p=><option key={p.id} value={p.id}>{p.label}</option>)}</select></div>}
 
 
         {/* ── BOARD VIEW ── */}
@@ -817,7 +827,7 @@ function Board({ role, myPersonId, ownerId, session }) {
                     <div style={{flex:1,overflowY:"auto",padding:"0 2px 4px"}}>
                       {colTasks.map((task,i)=>(
                         <div key={task.id} style={{animation:`cardIn 280ms cubic-bezier(0.4,0,0.2,1) ${Math.min(i,8)*35}ms both`}}>
-                          <MiniCard task={task} dark={dark} onEdit={t=>setTaskModal(t)} onDelete={deleteTask} onMove={moveTask} columns={COLUMNS} people={people} onTouchDragStart={handleTouchDragStart} isAdmin={isAdmin}/>
+                          <MiniCard task={task} dark={dark} onEdit={t=>setTaskModal(t)} onDelete={deleteTask} onMove={moveTask} columns={COLUMNS} people={people} onTouchDragStart={handleTouchDragStart} isAdmin={isAdmin} ticketNo={ticketNumbers[task.id]}/>
                         </div>
                       ))}
                     </div>
@@ -855,11 +865,11 @@ function Board({ role, myPersonId, ownerId, session }) {
                     <div style={{flex:1,overflowY:"auto",padding:"0 6px 8px",minHeight:100}}>
                       {colTasks.length===0?(
                         <div className="ptl-empty-icon" style={{padding:"32px 16px",textAlign:"center",border:`2px dashed ${brd}`,borderRadius:12,color:txt2,fontSize:13}}>
-                          {search||filterPri ? "No matches here" : "Drop tasks here"}
+                          {search||filterPri ? "No matches here" : "Drop tickets here"}
                         </div>
                       ):colTasks.map((task,i)=>(
                         <div key={task.id} style={{animation:`cardIn 300ms cubic-bezier(0.4,0,0.2,1) ${Math.min(i,8)*40}ms both`}}>
-                          <TaskCard task={task} dark={dark} onEdit={t=>setTaskModal(t)} onDelete={deleteTask} onMove={moveTask} columns={COLUMNS} people={people} isMobile={false} onTouchDragStart={handleTouchDragStart} isAdmin={isAdmin}/>
+                          <TaskCard task={task} dark={dark} onEdit={t=>setTaskModal(t)} onDelete={deleteTask} onMove={moveTask} columns={COLUMNS} people={people} isMobile={false} onTouchDragStart={handleTouchDragStart} isAdmin={isAdmin} ticketNo={ticketNumbers[task.id]}/>
                         </div>
                       ))}
                     </div>
@@ -872,7 +882,7 @@ function Board({ role, myPersonId, ownerId, session }) {
           /* ── DASHBOARD ── */
           <div className="ptl-view" style={{flex:1,overflowY:"auto",padding:isMobile?16:24,paddingBottom:isMobile?"calc(80px + env(safe-area-inset-bottom, 0px))":24}}>
             <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(5,1fr)",gap:isMobile?10:14,marginBottom:24}}>
-              {[{label:"Total",value:stats.total,icon:LayoutDashboard,color:"#6366f1"},{label:"Active",value:stats.inProgress,icon:Clock,color:"#1b4f8c"},{label:"Blocked",value:stats.blocked,icon:ShieldAlert,color:"#ef4444"},{label:"Done",value:stats.done,icon:CheckCircle2,color:"#16a34a"},{label:"Overdue",value:stats.overdue,icon:AlertCircle,color:"#dc2626"}].map(s=>(
+              {[{label:"Total Tickets",value:stats.total,icon:LayoutDashboard,color:"#6366f1"},{label:"Active",value:stats.inProgress,icon:Clock,color:"#1b4f8c"},{label:"Blocked",value:stats.blocked,icon:ShieldAlert,color:"#ef4444"},{label:"Resolved",value:stats.done,icon:CheckCircle2,color:"#16a34a"},{label:"Overdue",value:stats.overdue,icon:AlertCircle,color:"#dc2626"}].map(s=>(
                 <div key={s.label} style={{background:cardBg,borderRadius:12,padding:isMobile?"14px 16px":"18px 20px",border:`1px solid ${brd}`}}>
                   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}><span style={{fontSize:11,color:txt2,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.04em"}}>{s.label}</span><s.icon size={16} style={{color:s.color}}/></div>
                   <div style={{fontSize:isMobile?22:28,fontWeight:800,color:txt,letterSpacing:"-0.03em"}}><CountUp value={s.value}/></div>
@@ -904,7 +914,7 @@ function Board({ role, myPersonId, ownerId, session }) {
         {[{id:"board",icon:Columns3,label:"Board"},{id:"dashboard",icon:TrendingUp,label:"Dashboard"},{id:"people",icon:Users,label:isAdmin?"People":"You"}].map(({id,icon:Icon,label})=>(<button key={id} onClick={()=>{if(id==="people"){setDrawerOpen(true);return;}setView(id);}} aria-label={label} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"10px 0 8px",border:"none",background:"transparent",cursor:"pointer",color:view===id&&id!=="people"?"#1b4f8c":txt2,fontSize:10,fontWeight:600,transition:"color 150ms",minHeight:50}}><Icon size={20}/>{label}</button>))}
       </nav>)}
 
-      {taskModal&&<TaskModal task={taskModal} onSave={saveTask} onClose={()=>setTaskModal(null)} dark={dark} people={people} isMobile={isMobile}/>}
+      {taskModal&&<TaskModal task={taskModal} onSave={saveTask} onClose={()=>setTaskModal(null)} dark={dark} people={people} isMobile={isMobile} ticketNo={taskModal.id?ticketNumbers[taskModal.id]:null}/>}
       {personModal!==null&&<PersonModal person={personModal.id?personModal:null} onSave={savePerson} onClose={()=>setPersonModal(null)} dark={dark} isMobile={isMobile}/>}
       {inviteModal&&<InviteLinkModal invite={inviteModal} onClose={()=>setInviteModal(null)} dark={dark} isMobile={isMobile}/>}
     </div>
