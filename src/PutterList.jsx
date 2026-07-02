@@ -4,7 +4,7 @@ import {
   Plus, X, GripVertical, Calendar, Search, CheckCircle2, Clock, AlertCircle,
   ArrowRight, Trash2, Edit3, MoreHorizontal, TrendingUp,
   Moon, Sun, Users, LayoutDashboard, Menu,
-  UserPlus, Check, Columns3, ShieldAlert, Link2, Copy, Crown
+  UserPlus, Check, Columns3, ShieldAlert, Link2, Copy, Crown, Eye
 } from "lucide-react";
 
 /* ── constants ── */
@@ -21,7 +21,7 @@ const PRIORITIES = [
   { id: "medium", label: "Medium", color: "#d97706" },
   { id: "low", label: "Low", color: "#6b7280" },
 ];
-const TAGS = ["Hardware", "Software", "Network", "Account Access", "Maintenance", "Bug", "Feature Request", "General Support"];
+const TAGS = ["Design", "Dev", "Strategy", "Content", "Meeting", "Follow-up", "Bug", "Feature"];
 const genId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
 /* ── hooks ── */
@@ -130,7 +130,7 @@ function SingleToast({ toast, onDismiss }) {
 }
 
 /* ── task card ── */
-function TaskCard({ task, dark, onEdit, onDelete, onMove, columns, people, isMobile, onTouchDragStart, isAdmin, ticketNo }) {
+function TaskCard({ task, dark, onEdit, onDelete, onMove, columns, people, isMobile, onTouchDragStart, isAdmin, ticketNo, canEdit }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const pri = PRIORITIES.find(p=>p.id===task.priority);
   const person = people.find(p=>p.id===task.personId);
@@ -139,7 +139,7 @@ function TaskCard({ task, dark, onEdit, onDelete, onMove, columns, people, isMob
   const startPosRef = useRef(null);
 
   const handleTouchStart = (e) => {
-    if (!isMobile) return;
+    if (!isMobile || !canEdit) return;
     const t = e.touches[0];
     startPosRef.current = { x: t.clientX, y: t.clientY };
     longPressRef.current = setTimeout(() => {
@@ -158,27 +158,27 @@ function TaskCard({ task, dark, onEdit, onDelete, onMove, columns, people, isMob
 
   return (
     <div
-      draggable={!isMobile}
+      draggable={!isMobile && canEdit}
       onDragStart={e=>{e.dataTransfer.setData("taskId",task.id);e.currentTarget.style.opacity="0.4";}}
       onDragEnd={e=>{e.currentTarget.style.opacity="1";}}
       onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}
-      role="article" aria-label={`Ticket: ${task.title}`}
-      style={{background:dark?"#1e293b":"#ffffff",borderRadius:12,padding:"14px 16px",cursor:isMobile?"default":"grab",border:`1px solid ${dark?"#334155":"#e2e8f0"}`,transition:"all 200ms cubic-bezier(0.4,0,0.2,1)",position:"relative",marginBottom:10,touchAction:"pan-y",WebkitUserSelect:"none",userSelect:"none"}}
+      role="article" aria-label={`To-Do: ${task.title}`}
+      style={{background:dark?"#1e293b":"#ffffff",borderRadius:12,padding:"14px 16px",cursor:isMobile||!canEdit?"default":"grab",border:`1px solid ${dark?"#334155":"#e2e8f0"}`,transition:"all 200ms cubic-bezier(0.4,0,0.2,1)",position:"relative",marginBottom:10,touchAction:"pan-y",WebkitUserSelect:"none",userSelect:"none"}}
       onMouseEnter={!isMobile?e=>{e.currentTarget.style.transform="translateY(-1px)";e.currentTarget.style.boxShadow=dark?"0 4px 14px rgba(0,0,0,0.3)":"0 4px 14px rgba(0,0,0,0.07)";}:undefined}
       onMouseLeave={!isMobile?e=>{e.currentTarget.style.transform="translateY(0)";e.currentTarget.style.boxShadow="none";}:undefined}
     >
       <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:8}}>
         <div style={{display:"flex",alignItems:"center",gap:6,flex:1,minWidth:0}}>
-          {!isMobile && <GripVertical size={14} style={{color:dark?"#475569":"#cbd5e1",flexShrink:0}} />}
+          {!isMobile && canEdit && <GripVertical size={14} style={{color:dark?"#475569":"#cbd5e1",flexShrink:0}} />}
           <div style={{minWidth:0}}>
             {ticketNo && <div style={{fontSize:10.5,fontWeight:600,color:dark?"#64748b":"#94a3b8",letterSpacing:"0.03em",marginBottom:2}}>{ticketNo}</div>}
             <span style={{fontSize:14,fontWeight:500,color:dark?"#e2e8f0":"#1e293b",lineHeight:1.4}}>{task.title}</span>
           </div>
         </div>
-        <button onClick={e=>{e.stopPropagation();setMenuOpen(!menuOpen);}} aria-label="Ticket actions"
+        {canEdit && <button onClick={e=>{e.stopPropagation();setMenuOpen(!menuOpen);}} aria-label="To-Do actions"
           style={{background:"none",border:"none",cursor:"pointer",padding:8,color:dark?"#64748b":"#94a3b8",borderRadius:6,minWidth:32,minHeight:32,display:"flex",alignItems:"center",justifyContent:"center"}}>
           <MoreHorizontal size={18}/>
-        </button>
+        </button>}
       </div>
       {task.description && <p style={{fontSize:12.5,color:dark?"#94a3b8":"#64748b",margin:`6px 0 0 ${isMobile?0:20}px`,lineHeight:1.4}}>{task.description.length>80?task.description.slice(0,80)+"...":task.description}</p>}
       <div style={{display:"flex",alignItems:"center",gap:6,marginTop:10,flexWrap:"wrap"}}>
@@ -208,7 +208,7 @@ function TaskCard({ task, dark, onEdit, onDelete, onMove, columns, people, isMob
 }
 
 /* ── compact mobile card ── */
-function MiniCard({ task, dark, onEdit, onDelete, onMove, columns, people, onTouchDragStart, isAdmin, ticketNo }) {
+function MiniCard({ task, dark, onEdit, onDelete, onMove, columns, people, onTouchDragStart, isAdmin, ticketNo, canEdit }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const pri = PRIORITIES.find(p=>p.id===task.priority);
   const person = people.find(p=>p.id===task.personId);
@@ -216,6 +216,7 @@ function MiniCard({ task, dark, onEdit, onDelete, onMove, columns, people, onTou
   const startPosRef = useRef(null);
 
   const handleTS = (e) => {
+    if(!canEdit) return;
     const t = e.touches[0];
     startPosRef.current = {x:t.clientX, y:t.clientY};
     longPressRef.current = setTimeout(()=>{
@@ -265,11 +266,13 @@ function MiniCard({ task, dark, onEdit, onDelete, onMove, columns, people, onTou
               {task.tags?.map(tag=><span key={tag} style={{fontSize:11,color:dark?"#94a3b8":"#64748b",background:dark?"#334155":"#f1f5f9",padding:"2px 8px",borderRadius:5}}>{tag}</span>)}
             </div>
           </div>
-          <div style={{borderTop:`1px solid ${dark?"#334155":"#f1f5f9"}`,marginTop:8,paddingTop:4}}>
-            <ActBtn icon={Edit3} label="Edit" dark={dark} onClick={()=>{onEdit(task);setMenuOpen(false);}}/>
-            {columns.filter(c=>c.id!==task.column).map(c=><ActBtn key={c.id} icon={c.id==="blocked"?ShieldAlert:ArrowRight} label={`Move to ${c.label}`} dark={dark} iconColor={c.color} onClick={()=>{onMove(task.id,c.id);setMenuOpen(false);}}/>)}
-            {isAdmin && <ActBtn icon={Trash2} label="Delete" dark={dark} danger onClick={()=>{onDelete(task.id);setMenuOpen(false);}}/>}
-          </div>
+          {canEdit && (
+            <div style={{borderTop:`1px solid ${dark?"#334155":"#f1f5f9"}`,marginTop:8,paddingTop:4}}>
+              <ActBtn icon={Edit3} label="Edit" dark={dark} onClick={()=>{onEdit(task);setMenuOpen(false);}}/>
+              {columns.filter(c=>c.id!==task.column).map(c=><ActBtn key={c.id} icon={c.id==="blocked"?ShieldAlert:ArrowRight} label={`Move to ${c.label}`} dark={dark} iconColor={c.color} onClick={()=>{onMove(task.id,c.id);setMenuOpen(false);}}/>)}
+              {isAdmin && <ActBtn icon={Trash2} label="Delete" dark={dark} danger onClick={()=>{onDelete(task.id);setMenuOpen(false);}}/>}
+            </div>
+          )}
           <div style={{height:8}}/>
         </div>
       </>)}
@@ -307,7 +310,7 @@ function ModalShell({ onClose, dark, isMobile, title, children, footer }) {
 }
 
 /* ── task modal ── */
-function TaskModal({ task, onSave, onClose, dark, people, isMobile, ticketNo }) {
+function TaskModal({ task, onSave, onClose, dark, people, isMobile, ticketNo, isAdmin }) {
   const isEdit=!!task?.id;
   const [f,setF]=useState({title:task?.title||"",description:task?.description||"",priority:task?.priority||"medium",column:task?.column||"todo",personId:task?.personId||(people.find(p=>!p.isAll)?.id||""),dueDate:task?.dueDate||"",tags:task?.tags||[],subtasks:task?.subtasks||[]});
   const [sub,setSub]=useState("");
@@ -320,19 +323,19 @@ function TaskModal({ task, onSave, onClose, dark, people, isMobile, ticketNo }) 
     setSaving(false);
   };
   return (
-    <ModalShell onClose={onClose} dark={dark} isMobile={isMobile} title={isEdit?`Edit Ticket${ticketNo?` · ${ticketNo}`:""}`:"New Ticket"} footer={<><MBtn label="Cancel" dark={dark} ghost onClick={onClose} disabled={saving}/><MBtn label={saving?"Saving...":(isEdit?"Save":"Create Ticket")} onClick={submit} disabled={!f.title.trim()||saving}/></>}>
+    <ModalShell onClose={onClose} dark={dark} isMobile={isMobile} title={isEdit?`Edit To-Do${ticketNo?` · ${ticketNo}`:""}`:"New To-Do"} footer={<><MBtn label="Cancel" dark={dark} ghost onClick={onClose} disabled={saving}/><MBtn label={saving?"Saving...":(isEdit?"Save":"Create To-Do")} onClick={submit} disabled={!f.title.trim()||saving}/></>}>
       <div style={{display:"flex",flexDirection:"column",gap:16}}>
         <Fld label="Title" dark={dark}><input value={f.title} onChange={e=>up("title",e.target.value)} placeholder="Describe the issue or request" style={inp(dark)}/></Fld>
         <Fld label="Description" dark={dark}><textarea value={f.description} onChange={e=>up("description",e.target.value)} placeholder="Add details..." rows={3} style={{...inp(dark),resize:"vertical",fontFamily:"inherit"}}/></Fld>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-          <Fld label="Requester" dark={dark}><select value={f.personId} onChange={e=>up("personId",e.target.value)} style={inp(dark)}><option value="">Unassigned</option>{people.filter(p=>!p.isAll).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></Fld>
+        <div style={{display:"grid",gridTemplateColumns:isAdmin?"1fr 1fr":"1fr",gap:12}}>
+          {isAdmin && <Fld label="Assigned To" dark={dark}><select value={f.personId} onChange={e=>up("personId",e.target.value)} style={inp(dark)}><option value="">Unassigned</option>{people.filter(p=>!p.isAll).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></Fld>}
           <Fld label="Priority" dark={dark}><select value={f.priority} onChange={e=>up("priority",e.target.value)} style={inp(dark)}>{PRIORITIES.map(p=><option key={p.id} value={p.id}>{p.label}</option>)}</select></Fld>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
           <Fld label="Status" dark={dark}><select value={f.column} onChange={e=>up("column",e.target.value)} style={inp(dark)}>{COLUMNS.map(c=><option key={c.id} value={c.id}>{c.label}</option>)}</select></Fld>
           <Fld label="Due Date" dark={dark}><input type="date" value={f.dueDate} onChange={e=>up("dueDate",e.target.value)} style={inp(dark)}/></Fld>
         </div>
-        <Fld label="Category" dark={dark}><div style={{display:"flex",flexWrap:"wrap",gap:6}}>{TAGS.map(tag=><button key={tag} onClick={()=>up("tags",f.tags.includes(tag)?f.tags.filter(t=>t!==tag):[...f.tags,tag])} style={{padding:"6px 14px",borderRadius:8,fontSize:13,fontWeight:500,border:`1px solid ${f.tags.includes(tag)?"#1b4f8c":(dark?"#334155":"#e2e8f0")}`,background:f.tags.includes(tag)?"#1b4f8c15":"transparent",color:f.tags.includes(tag)?"#1b4f8c":(dark?"#94a3b8":"#64748b"),cursor:"pointer",transition:"all 150ms",minHeight:36}}>{tag}</button>)}</div></Fld>
+        <Fld label="Tags" dark={dark}><div style={{display:"flex",flexWrap:"wrap",gap:6}}>{TAGS.map(tag=><button key={tag} onClick={()=>up("tags",f.tags.includes(tag)?f.tags.filter(t=>t!==tag):[...f.tags,tag])} style={{padding:"6px 14px",borderRadius:8,fontSize:13,fontWeight:500,border:`1px solid ${f.tags.includes(tag)?"#1b4f8c":(dark?"#334155":"#e2e8f0")}`,background:f.tags.includes(tag)?"#1b4f8c15":"transparent",color:f.tags.includes(tag)?"#1b4f8c":(dark?"#94a3b8":"#64748b"),cursor:"pointer",transition:"all 150ms",minHeight:36}}>{tag}</button>)}</div></Fld>
         <Fld label="Subtasks" dark={dark}>
           {f.subtasks.map(st=><div key={st.id} style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}><input type="checkbox" checked={st.done} onChange={()=>up("subtasks",f.subtasks.map(s=>s.id===st.id?{...s,done:!s.done}:s))} style={{accentColor:"#1b4f8c",width:18,height:18,cursor:"pointer"}}/><span style={{fontSize:14,color:st.done?(dark?"#64748b":"#94a3b8"):(dark?"#e2e8f0":"#334155"),textDecoration:st.done?"line-through":"none",flex:1}}>{st.text}</span><button onClick={()=>up("subtasks",f.subtasks.filter(s=>s.id!==st.id))} aria-label="Remove" style={{background:"none",border:"none",cursor:"pointer",color:"#94a3b8",padding:6,minWidth:32,minHeight:32,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:6}}><X size={16}/></button></div>)}
           <div style={{display:"flex",gap:8}}><input value={sub} onChange={e=>setSub(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&sub.trim()){up("subtasks",[...f.subtasks,{id:genId(),text:sub.trim(),done:false}]);setSub("");}}} placeholder="Add a subtask..." style={{...inp(dark),flex:1}}/><button onClick={()=>{if(!sub.trim())return;up("subtasks",[...f.subtasks,{id:genId(),text:sub.trim(),done:false}]);setSub("");}} aria-label="Add" style={{background:"#1b4f8c",color:"#fff",border:"none",borderRadius:10,padding:"0 16px",cursor:"pointer",fontSize:20,fontWeight:300,minHeight:46}}>+</button></div>
@@ -371,7 +374,7 @@ function InviteLinkModal({ invite, onClose, dark, isMobile }) {
     <ModalShell onClose={onClose} dark={dark} isMobile={isMobile} title={`Invite ${invite.personName}`} footer={<MBtn label="Done" onClick={onClose}/>}>
       <div style={{display:"flex",flexDirection:"column",gap:14}}>
         <p style={{fontSize:13.5,color:dark?"#94a3b8":"#64748b",lineHeight:1.5}}>
-          Send this link to {invite.personName}. When they open it and sign in with their email, they'll see only their own tasks — never anyone else's board.
+          Send this link to {invite.personName}. When they sign in, they see only their own to-dos, unless you share another board with them.
         </p>
         <div style={{display:"flex",gap:8}}>
           <input readOnly value={invite.link} onFocus={e=>e.target.select()} style={{...inp(dark), flex:1, fontSize:12.5}} />
@@ -380,6 +383,32 @@ function InviteLinkModal({ invite, onClose, dark, isMobile }) {
           </button>
         </div>
         <p style={{fontSize:12,color:dark?"#64748b":"#94a3b8"}}>This link expires in 14 days.</p>
+      </div>
+    </ModalShell>
+  );
+}
+
+function ShareBoardModal({ board, people, boardAccess, onToggle, onClose, dark, isMobile }) {
+  const eligible = people.filter(p => !p.isAll && p.id !== board.id && p.userId);
+  const hasAccess = (viewerUserId) => boardAccess.some(g=>g.board_person_id===board.id && g.viewer_user_id===viewerUserId);
+  return (
+    <ModalShell onClose={onClose} dark={dark} isMobile={isMobile} title={`Share ${board.name}'s board`} footer={<MBtn label="Done" onClick={onClose}/>}>
+      <div style={{display:"flex",flexDirection:"column",gap:12}}>
+        <p style={{fontSize:13.5,color:dark?"#94a3b8":"#64748b",lineHeight:1.5}}>
+          Anyone checked below sees {board.name}'s to-dos too. They can view only. They cannot edit, move, or delete anything on this board.
+        </p>
+        {eligible.length === 0 ? (
+          <p style={{fontSize:13,color:dark?"#64748b":"#94a3b8",padding:"12px 0"}}>
+            No one else has joined yet. Invite someone first, then share boards with them.
+          </p>
+        ) : eligible.map(p=>(
+          <label key={p.id} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",borderRadius:10,border:`1px solid ${dark?"#334155":"#e2e8f0"}`,cursor:"pointer"}}>
+            <input type="checkbox" checked={hasAccess(p.userId)} onChange={e=>onToggle(board.id, p.userId, e.target.checked)}
+              style={{accentColor:"#1b4f8c",width:18,height:18,cursor:"pointer"}}/>
+            <Avatar name={p.name} size={28}/>
+            <span style={{fontSize:14,color:dark?"#e2e8f0":"#1e293b",fontWeight:500}}>{p.name}</span>
+          </label>
+        ))}
       </div>
     </ModalShell>
   );
@@ -398,9 +427,10 @@ function Board({ role, myPersonId, ownerId, session }) {
   const [darkOverride, setDarkOverride] = useState(null);
   const dark = darkOverride !== null ? darkOverride : prefDark;
 
-  const [people, setPeople] = useState([{id:"p1",name:"All Tickets",isAll:true}]);
+  const [people, setPeople] = useState([{id:"p1",name:"All To-Dos",isAll:true}]);
   const [tasks, setTasks] = useState([]);
   const [activePerson, setActivePerson] = useState("p1");
+  const canEdit = isAdmin || activePerson === myPersonId;
   const [view, setView] = useState("board");
   const [taskModal, setTaskModal] = useState(null);
   const [personModal, setPersonModal] = useState(null);
@@ -427,14 +457,14 @@ function Board({ role, myPersonId, ownerId, session }) {
         e.preventDefault(); searchInputRef.current?.focus();
       } else if(e.key==="Escape" && document.activeElement===searchInputRef.current){
         setSearch(""); searchInputRef.current?.blur();
-      } else if(e.key.toLowerCase()==="n" && !typing && !taskModal && !personModal){
+      } else if(e.key.toLowerCase()==="n" && !typing && !taskModal && !personModal && canEdit){
         e.preventDefault();
         setTaskModal({ column: "todo", personId: activePerson==="p1"?"":activePerson });
       }
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  },[isMobile,taskModal,personModal,activePerson]);
+  },[isMobile,taskModal,personModal,activePerson,canEdit]);
 
   /* touch drag state */
   const [dragTask, setDragTask] = useState(null);
@@ -490,21 +520,38 @@ function Board({ role, myPersonId, ownerId, session }) {
   }, [dragTask, dropTarget, triggerDone, showToast]);
 
   const [inviteModal, setInviteModal] = useState(null); // { link, personName }
+  const [shareModal, setShareModal] = useState(null); // { id, name } of the board being shared
 
   /* load people + tasks, scoped by RLS automatically */
+  const [boardAccess, setBoardAccess] = useState([]); // admin only: [{id, board_person_id, viewer_user_id}]
+
+  const hasSetInitialPerson = useRef(false);
+
   const loadData = useCallback(async () => {
-    const [{ data: peopleRows }, { data: taskRows }] = await Promise.all([
+    const queries = [
       supabase.from("people").select("*").order("created_at"),
       supabase.from("tasks").select("*").order("created_at"),
-    ]);
-    const mappedPeople = (peopleRows||[]).map(p=>({id:p.id,name:p.name,role:p.role||"",userId:p.user_id||null}));
-    setPeople(isAdmin ? [{id:"p1",name:"All Tickets",isAll:true}, ...mappedPeople] : mappedPeople);
+    ];
+    if (isAdmin) queries.push(supabase.from("board_access").select("*"));
+    const results = await Promise.all(queries);
+    const peopleRows = results[0].data;
+    const taskRows = results[1].data;
+    if (isAdmin) setBoardAccess(results[2]?.data || []);
+
+    const mappedPeople = (peopleRows||[]).map(p=>({
+      id:p.id, name:p.name, role:p.role||"", userId:p.user_id||null,
+      isShared: !isAdmin && p.id !== myPersonId,
+    }));
+    setPeople(isAdmin ? [{id:"p1",name:"All To-Dos",isAll:true}, ...mappedPeople] : mappedPeople);
     setTasks((taskRows||[]).map(t=>({
       id:t.id, title:t.title, description:t.description||"", priority:t.priority,
       column:t.column_id, personId:t.person_id||"", dueDate:t.due_date||"",
       tags:t.tags||[], subtasks:t.subtasks||[], createdAt:t.created_at,
     })));
-    if (!isAdmin && myPersonId) setActivePerson(myPersonId);
+    if (!isAdmin && myPersonId && !hasSetInitialPerson.current) {
+      setActivePerson(myPersonId);
+      hasSetInitialPerson.current = true;
+    }
   }, [isAdmin, myPersonId]);
 
   useEffect(()=>{
@@ -582,7 +629,7 @@ function Board({ role, myPersonId, ownerId, session }) {
       if(error) showToast("Couldn't save changes");
     }
     setTaskModal(null);
-    showToast(isNew?"Ticket created":"Ticket saved");
+    showToast(isNew?"To-Do created":"To-Do saved");
   },[showToast,tasks,isAdmin,session,ownerId,myPersonId]);
 
   const deleteTask = useCallback(async id=>{
@@ -591,7 +638,7 @@ function Board({ role, myPersonId, ownerId, session }) {
     const { error } = await supabase.from("tasks").delete().eq("id", id);
     if(error){ showToast("Couldn't delete, refreshing"); loadData(); return; }
     if(removed){
-      showToast("Ticket deleted", {
+      showToast("To-Do deleted", {
         label: "Undo",
         onClick: async () => {
           const row = {
@@ -605,7 +652,7 @@ function Board({ role, myPersonId, ownerId, session }) {
         }
       });
     } else {
-      showToast("Ticket deleted");
+      showToast("To-Do deleted");
     }
   },[showToast,loadData,tasks,isAdmin,session,ownerId]);
 
@@ -648,12 +695,28 @@ function Board({ role, myPersonId, ownerId, session }) {
 
   const createInvite = useCallback(async (person) => {
     const { data, error } = await supabase.from("invites").insert({
-      owner_id: session.user.id, person_id: person.id,
+      owner_id: session.user.id, person_id: person.id, owner_email: session.user.email,
     }).select().single();
     if(error || !data){ showToast("Couldn't create invite"); return; }
     const link = `${window.location.origin}/?invite=${data.token}`;
     setInviteModal({ link, personName: person.name });
   },[session,showToast]);
+
+  const toggleBoardAccess = useCallback(async (boardPersonId, viewerUserId, grant) => {
+    if(grant){
+      const { data, error } = await supabase.from("board_access").insert({
+        owner_id: session.user.id, board_person_id: boardPersonId, viewer_user_id: viewerUserId,
+      }).select().single();
+      if(error){ showToast("Couldn't share board"); return; }
+      setBoardAccess(prev=>[...prev, data]);
+    } else {
+      const grantRow = boardAccess.find(g=>g.board_person_id===boardPersonId && g.viewer_user_id===viewerUserId);
+      if(!grantRow) return;
+      const { error } = await supabase.from("board_access").delete().eq("id", grantRow.id);
+      if(error){ showToast("Couldn't remove access"); return; }
+      setBoardAccess(prev=>prev.filter(g=>g.id!==grantRow.id));
+    }
+  },[session,showToast,boardAccess]);
 
   const stats = useMemo(()=>{const pt=activePerson==="p1"?tasks:tasks.filter(t=>t.personId===activePerson);const total=pt.length,done=pt.filter(t=>t.column==="done").length,overdue=pt.filter(t=>t.dueDate&&new Date(t.dueDate)<new Date()&&t.column!=="done").length,prog=pt.filter(t=>t.column==="progress").length,blocked=pt.filter(t=>t.column==="blocked").length;return{total,done,overdue,inProgress:prog,blocked,percent:total?Math.round(done/total*100):0};},[tasks,activePerson]);
   const pStats = useCallback(pid=>{const pt=tasks.filter(t=>t.personId===pid);const total=pt.length,done=pt.filter(t=>t.column==="done").length;return{total,done,percent:total?Math.round(done/total*100):0};},[tasks]);
@@ -769,6 +832,7 @@ function Board({ role, myPersonId, ownerId, session }) {
                       ? <span title="Joined" style={{width:7,height:7,borderRadius:"50%",background:"#16a34a",flexShrink:0}}/>
                       : <span title="Not yet joined" style={{width:7,height:7,borderRadius:"50%",background:dark?"#475569":"#cbd5e1",flexShrink:0}}/>
                     )}
+                    {p.isShared && <Eye size={14} title="Shared with you, view only" style={{color:txt2,flexShrink:0}}/>}
                     {ps&&ps.total>0&&<ProgressRing percent={ps.percent} size={26} stroke={2.5}/>}
                   </button>
                   {isAdmin && !p.isAll && !p.userId && (
@@ -778,10 +842,16 @@ function Board({ role, myPersonId, ownerId, session }) {
                     </button>
                   )}
                   {isAdmin && !p.isAll && (
+                    <button onClick={()=>setShareModal({id:p.id,name:p.name})} aria-label={`Share ${p.name}'s board`} title="Share this board"
+                      style={{background:"none",border:"none",cursor:"pointer",color:txt2,padding:6,borderRadius:6,minWidth:32,minHeight:32,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                      <Eye size={15}/>
+                    </button>
+                  )}
+                  {isAdmin && !p.isAll && (
                     <button onClick={()=>{
                         const msg = p.userId
-                          ? `Remove ${p.name}? This deletes their login and all their tickets. This cannot be undone.`
-                          : `Remove ${p.name}? This deletes all their tickets. This cannot be undone.`;
+                          ? `Remove ${p.name}? This deletes their login and all their to-dos. This cannot be undone.`
+                          : `Remove ${p.name}? This deletes all their to-dos. This cannot be undone.`;
                         if(window.confirm(msg)) deletePerson(p.id);
                       }} aria-label={`Remove ${p.name}`} title="Remove person"
                       style={{background:"none",border:"none",cursor:"pointer",color:txt2,padding:6,borderRadius:6,minWidth:32,minHeight:32,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
@@ -814,12 +884,12 @@ function Board({ role, myPersonId, ownerId, session }) {
               <div style={{display:"flex",alignItems:"center",gap:8,background:dark?"#1e293b":"#f1f5f9",borderRadius:10,padding:"8px 14px"}}><Search size={16} style={{color:txt2}}/><input ref={searchInputRef} value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search..." style={{border:"none",background:"transparent",outline:"none",fontSize:14,color:txt,width:140,fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif"}}/>{search?<button onClick={()=>setSearch("")} aria-label="Clear search" style={{background:"none",border:"none",color:txt2,cursor:"pointer",padding:0,display:"flex"}}><X size={14}/></button>:<kbd style={{fontSize:11,color:txt2,background:dark?"#0f172a":"#e2e8f0",padding:"2px 6px",borderRadius:4,fontFamily:"inherit"}}>⌘K</kbd>}</div>
             )}
             {!isMobile&&<select value={filterPri} onChange={e=>setFilterPri(e.target.value)} aria-label="Filter" style={{padding:"10px 34px 10px 14px",borderRadius:10,fontSize:13,border:`1px solid ${brd}`,background:dark?"#1e293b":"#f8fafc",color:txt,cursor:"pointer",outline:"none",minHeight:42,fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif"}}><option value="">All Priorities</option>{PRIORITIES.map(p=><option key={p.id} value={p.id}>{p.label}</option>)}</select>}
-            <button onClick={()=>setTaskModal({column:"todo",personId:activePerson==="p1"?"":activePerson})} aria-label="Create ticket" title={isMobile?undefined:"New ticket (N)"} style={{display:"flex",alignItems:"center",gap:6,...(isMobile?{width:42,height:42,borderRadius:12,justifyContent:"center",padding:0}:{padding:"10px 20px",borderRadius:10}),border:"none",background:"#1b4f8c",color:"#fff",cursor:"pointer",fontSize:14,fontWeight:600,transition:"all 150ms",minHeight:42}}><Plus size={18}/>{!isMobile&&"New Ticket"}</button>
+            {canEdit && <button onClick={()=>setTaskModal({column:"todo",personId:activePerson==="p1"?"":activePerson})} aria-label="Create to-do" title={isMobile?undefined:"New to-do (N)"} style={{display:"flex",alignItems:"center",gap:6,...(isMobile?{width:42,height:42,borderRadius:12,justifyContent:"center",padding:0}:{padding:"10px 20px",borderRadius:10}),border:"none",background:"#1b4f8c",color:"#fff",cursor:"pointer",fontSize:14,fontWeight:600,transition:"all 150ms",minHeight:42}}><Plus size={18}/>{!isMobile&&"New To-Do"}</button>}
           </div>
         </header>
 
         {/* mobile search */}
-        {isMobile&&searchOpen&&<div style={{padding:"8px 16px",background:dark?"#0b1120":"#fff",borderBottom:`1px solid ${brd}`,display:"flex",gap:8}}><div style={{flex:1,display:"flex",alignItems:"center",gap:8,background:dark?"#1e293b":"#f1f5f9",borderRadius:10,padding:"8px 14px"}}><Search size={16} style={{color:txt2}}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search tickets..." autoFocus style={{border:"none",background:"transparent",outline:"none",fontSize:14,color:txt,width:"100%",fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif"}}/>{search&&<button onClick={()=>setSearch("")} aria-label="Clear search" style={{background:"none",border:"none",color:txt2,cursor:"pointer",padding:0,display:"flex"}}><X size={14}/></button>}</div><select value={filterPri} onChange={e=>setFilterPri(e.target.value)} style={{padding:"8px 30px 8px 10px",borderRadius:10,fontSize:13,border:`1px solid ${brd}`,background:dark?"#1e293b":"#f8fafc",color:txt,minHeight:42,fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif"}}><option value="">All</option>{PRIORITIES.map(p=><option key={p.id} value={p.id}>{p.label}</option>)}</select></div>}
+        {isMobile&&searchOpen&&<div style={{padding:"8px 16px",background:dark?"#0b1120":"#fff",borderBottom:`1px solid ${brd}`,display:"flex",gap:8}}><div style={{flex:1,display:"flex",alignItems:"center",gap:8,background:dark?"#1e293b":"#f1f5f9",borderRadius:10,padding:"8px 14px"}}><Search size={16} style={{color:txt2}}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search to-dos..." autoFocus style={{border:"none",background:"transparent",outline:"none",fontSize:14,color:txt,width:"100%",fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif"}}/>{search&&<button onClick={()=>setSearch("")} aria-label="Clear search" style={{background:"none",border:"none",color:txt2,cursor:"pointer",padding:0,display:"flex"}}><X size={14}/></button>}</div><select value={filterPri} onChange={e=>setFilterPri(e.target.value)} style={{padding:"8px 30px 8px 10px",borderRadius:10,fontSize:13,border:`1px solid ${brd}`,background:dark?"#1e293b":"#f8fafc",color:txt,minHeight:42,fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif"}}><option value="">All</option>{PRIORITIES.map(p=><option key={p.id} value={p.id}>{p.label}</option>)}</select></div>}
 
 
         {/* ── BOARD VIEW ── */}
@@ -851,16 +921,16 @@ function Board({ role, myPersonId, ownerId, session }) {
                     <div style={{flex:1,overflowY:"auto",padding:"0 2px 4px"}}>
                       {colTasks.map((task,i)=>(
                         <div key={task.id} style={{animation:`cardIn 280ms cubic-bezier(0.4,0,0.2,1) ${Math.min(i,8)*35}ms both`}}>
-                          <MiniCard task={task} dark={dark} onEdit={t=>setTaskModal(t)} onDelete={deleteTask} onMove={moveTask} columns={COLUMNS} people={people} onTouchDragStart={handleTouchDragStart} isAdmin={isAdmin} ticketNo={ticketNumbers[task.id]}/>
+                          <MiniCard task={task} dark={dark} onEdit={t=>setTaskModal(t)} onDelete={deleteTask} onMove={moveTask} columns={COLUMNS} people={people} onTouchDragStart={handleTouchDragStart} isAdmin={isAdmin} ticketNo={ticketNumbers[task.id]} canEdit={canEdit}/>
                         </div>
                       ))}
                     </div>
-                    <button onClick={()=>setTaskModal({column:col.id,personId:activePerson==="p1"?"":activePerson})}
+                    {canEdit && <button onClick={()=>setTaskModal({column:col.id,personId:activePerson==="p1"?"":activePerson})}
                       aria-label={`Add to ${col.label}`}
                       style={{margin:"2px 4px 6px",padding:"6px 0",borderRadius:6,border:`1.5px dashed ${dark?"#334155":"#e2e8f0"}`,
                         background:"transparent",cursor:"pointer",color:txt2,fontSize:16,display:"flex",alignItems:"center",justifyContent:"center",minHeight:32}}>
                       <Plus size={14}/>
-                    </button>
+                    </button>}
                   </div>
                 );
               })}
@@ -874,9 +944,9 @@ function Board({ role, myPersonId, ownerId, session }) {
                 const isDropHere = dragTask && dropTarget === col.id;
                 return (
                   <div key={col.id} ref={el=>{colRefs.current[col.id]=el;}}
-                    onDragOver={e=>{e.preventDefault();e.currentTarget.style.background=dark?col.bgDark:col.bgLight;}}
-                    onDragLeave={e=>{e.currentTarget.style.background="transparent";}}
-                    onDrop={e=>{handleDrop(col.id)(e);e.currentTarget.style.background="transparent";}}
+                    onDragOver={canEdit?e=>{e.preventDefault();e.currentTarget.style.background=dark?col.bgDark:col.bgLight;}:undefined}
+                    onDragLeave={canEdit?e=>{e.currentTarget.style.background="transparent";}:undefined}
+                    onDrop={canEdit?e=>{handleDrop(col.id)(e);e.currentTarget.style.background="transparent";}:undefined}
                     style={{flex:1,minWidth:220,maxWidth:340,display:"flex",flexDirection:"column",borderRadius:12,transition:"background 200ms",background:isDropHere?(dark?col.bgDark:col.bgLight):"transparent"}}>
                     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 14px",marginBottom:8}}>
                       <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -884,16 +954,16 @@ function Board({ role, myPersonId, ownerId, session }) {
                         <span style={{fontSize:14,fontWeight:700,color:txt}}>{col.label}</span>
                         <span key={colTasks.length} className="ptl-count-bump" style={{fontSize:12,fontWeight:600,color:txt2,background:dark?"#1e293b":"#f1f5f9",padding:"2px 8px",borderRadius:10,display:"inline-block"}}>{colTasks.length}</span>
                       </div>
-                      <button onClick={()=>setTaskModal({column:col.id,personId:activePerson==="p1"?"":activePerson})} aria-label={`Add to ${col.label}`} style={{background:"none",border:"none",cursor:"pointer",color:txt2,padding:6,borderRadius:6,minWidth:32,minHeight:32,display:"flex",alignItems:"center",justifyContent:"center"}}><Plus size={16}/></button>
+                      {canEdit && <button onClick={()=>setTaskModal({column:col.id,personId:activePerson==="p1"?"":activePerson})} aria-label={`Add to ${col.label}`} style={{background:"none",border:"none",cursor:"pointer",color:txt2,padding:6,borderRadius:6,minWidth:32,minHeight:32,display:"flex",alignItems:"center",justifyContent:"center"}}><Plus size={16}/></button>}
                     </div>
                     <div style={{flex:1,overflowY:"auto",padding:"0 6px 8px",minHeight:100}}>
                       {colTasks.length===0?(
                         <div className="ptl-empty-icon" style={{padding:"32px 16px",textAlign:"center",border:`2px dashed ${brd}`,borderRadius:12,color:txt2,fontSize:13}}>
-                          {search||filterPri ? "No matches here" : "Drop tickets here"}
+                          {search||filterPri ? "No matches here" : "Drop to-dos here"}
                         </div>
                       ):colTasks.map((task,i)=>(
                         <div key={task.id} style={{animation:`cardIn 300ms cubic-bezier(0.4,0,0.2,1) ${Math.min(i,8)*40}ms both`}}>
-                          <TaskCard task={task} dark={dark} onEdit={t=>setTaskModal(t)} onDelete={deleteTask} onMove={moveTask} columns={COLUMNS} people={people} isMobile={false} onTouchDragStart={handleTouchDragStart} isAdmin={isAdmin} ticketNo={ticketNumbers[task.id]}/>
+                          <TaskCard task={task} dark={dark} onEdit={t=>setTaskModal(t)} onDelete={deleteTask} onMove={moveTask} columns={COLUMNS} people={people} isMobile={false} onTouchDragStart={handleTouchDragStart} isAdmin={isAdmin} ticketNo={ticketNumbers[task.id]} canEdit={canEdit}/>
                         </div>
                       ))}
                     </div>
@@ -906,7 +976,7 @@ function Board({ role, myPersonId, ownerId, session }) {
           /* ── DASHBOARD ── */
           <div className="ptl-view" style={{flex:1,overflowY:"auto",padding:isMobile?16:24,paddingBottom:isMobile?"calc(80px + env(safe-area-inset-bottom, 0px))":24}}>
             <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(5,1fr)",gap:isMobile?10:14,marginBottom:24}}>
-              {[{label:"Total Tickets",value:stats.total,icon:LayoutDashboard,color:"#6366f1"},{label:"Active",value:stats.inProgress,icon:Clock,color:"#1b4f8c"},{label:"Blocked",value:stats.blocked,icon:ShieldAlert,color:"#ef4444"},{label:"Resolved",value:stats.done,icon:CheckCircle2,color:"#16a34a"},{label:"Overdue",value:stats.overdue,icon:AlertCircle,color:"#dc2626"}].map(s=>(
+              {[{label:"Total To-Dos",value:stats.total,icon:LayoutDashboard,color:"#6366f1"},{label:"Active",value:stats.inProgress,icon:Clock,color:"#1b4f8c"},{label:"Blocked",value:stats.blocked,icon:ShieldAlert,color:"#ef4444"},{label:"Resolved",value:stats.done,icon:CheckCircle2,color:"#16a34a"},{label:"Overdue",value:stats.overdue,icon:AlertCircle,color:"#dc2626"}].map(s=>(
                 <div key={s.label} style={{background:cardBg,borderRadius:12,padding:isMobile?"14px 16px":"18px 20px",border:`1px solid ${brd}`}}>
                   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}><span style={{fontSize:11,color:txt2,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.04em"}}>{s.label}</span><s.icon size={16} style={{color:s.color}}/></div>
                   <div style={{fontSize:isMobile?22:28,fontWeight:800,color:txt,letterSpacing:"-0.03em"}}><CountUp value={s.value}/></div>
@@ -938,9 +1008,10 @@ function Board({ role, myPersonId, ownerId, session }) {
         {[{id:"board",icon:Columns3,label:"Board"},{id:"dashboard",icon:TrendingUp,label:"Dashboard"},{id:"people",icon:Users,label:isAdmin?"People":"You"}].map(({id,icon:Icon,label})=>(<button key={id} onClick={()=>{if(id==="people"){setDrawerOpen(true);return;}setView(id);}} aria-label={label} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"10px 0 8px",border:"none",background:"transparent",cursor:"pointer",color:view===id&&id!=="people"?"#1b4f8c":txt2,fontSize:10,fontWeight:600,transition:"color 150ms",minHeight:50}}><Icon size={20}/>{label}</button>))}
       </nav>)}
 
-      {taskModal&&<TaskModal task={taskModal} onSave={saveTask} onClose={()=>setTaskModal(null)} dark={dark} people={people} isMobile={isMobile} ticketNo={taskModal.id?ticketNumbers[taskModal.id]:null}/>}
+      {taskModal&&<TaskModal task={taskModal} onSave={saveTask} onClose={()=>setTaskModal(null)} dark={dark} people={people} isMobile={isMobile} ticketNo={taskModal.id?ticketNumbers[taskModal.id]:null} isAdmin={isAdmin}/>}
       {personModal!==null&&<PersonModal person={personModal.id?personModal:null} onSave={savePerson} onClose={()=>setPersonModal(null)} dark={dark} isMobile={isMobile}/>}
       {inviteModal&&<InviteLinkModal invite={inviteModal} onClose={()=>setInviteModal(null)} dark={dark} isMobile={isMobile}/>}
+      {shareModal&&<ShareBoardModal board={shareModal} people={people} boardAccess={boardAccess} onToggle={toggleBoardAccess} onClose={()=>setShareModal(null)} dark={dark} isMobile={isMobile}/>}
     </div>
   );
 }
@@ -1052,7 +1123,13 @@ function LoginScreen({ dark, inviteContext }) {
     setBusy(true); setErr("");
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
-      options: { emailRedirectTo: window.location.origin + (inviteContext ? `/?invite=${inviteContext.token}` : "") },
+      options: {
+        emailRedirectTo: window.location.origin + (inviteContext ? `/?invite=${inviteContext.token}` : ""),
+        data: {
+          name: inviteContext?.personName || "",
+          invited_by: inviteContext?.ownerEmail || "",
+        },
+      },
     });
     setBusy(false);
     if (error) setErr(error.message);
@@ -1137,7 +1214,7 @@ function AppInner() {
 
       if (session === null && pendingToken) {
         const { data: invite } = await supabase.from("invites").select("*, people(name)").eq("token", pendingToken).eq("used", false).maybeSingle();
-        if (invite) setInviteContext({ token: pendingToken, personName: invite.people?.name || "your" });
+        if (invite) setInviteContext({ token: pendingToken, personName: invite.people?.name || "your", ownerEmail: invite.owner_email || "" });
         return;
       }
 

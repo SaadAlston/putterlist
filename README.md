@@ -53,6 +53,47 @@ npm run dev
 Just run `supabase-schema-v2.sql` — it only adds new columns, tables, and
 policies on top of what's there. Nothing destructive.
 
+## Personalizing the welcome email
+
+Run `supabase-schema-v3.sql` first, if you haven't. It adds a column that
+stores who sent each invite, needed for personalization.
+
+The app now sends the invited person's name and the inviting admin's email
+to Supabase as sign-in metadata. Supabase makes this available in your
+email template as `{{ .Data.name }}` and `{{ .Data.invited_by }}`.
+
+Update your template in Supabase, under Authentication, Email Templates,
+Magic Link:
+
+```html
+<h2>{{ if .Data.name }}Hi {{ .Data.name }},{{ else }}Hello,{{ end }}</h2>
+<p>
+  {{ if .Data.invited_by }}
+    {{ .Data.invited_by }} added you to PutterList.
+  {{ else }}
+    Sign in to PutterList using the link below.
+  {{ end }}
+</p>
+<p><a href="{{ .ConfirmationURL }}">Sign in</a></p>
+```
+
+This works with Supabase's default mailer. For your own sender address and
+higher sending limits, connect a custom SMTP provider like Resend or
+Postmark under Authentication, SMTP Settings.
+
+## Sharing boards with multiple people
+
+Click the eye icon next to any person's name in the sidebar. Check off
+anyone who has already joined. They now see that board too, alongside
+their own.
+
+Shared access is view only. Anyone you share a board with can look at it
+but cannot add, edit, move, or delete anything there. Only the admin and
+the board's own person can make changes.
+
+You can share one board with several people, and one person can view
+several boards. Toggle a checkbox off to revoke access instantly.
+
 ## Removing people
 
 Click the trash icon next to a person's name. This deletes their tickets.
