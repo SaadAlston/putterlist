@@ -855,8 +855,11 @@ function Board({ role, myPersonId, ownerId, session }) {
   );
 
   return (
-    <div style={{fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif",height:"100dvh",display:"flex",flexDirection:isMobile?"column":"row",background:bg,color:txt,overflow:"hidden",WebkitFontSmoothing:"antialiased",transition:"background-color 300ms ease,color 300ms ease"}}>
-      <style>{`
+<div style={{fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif",height:"100dvh",display:"flex",flexDirection:isMobile?"column":"row",background:bg,color:txt,overflow:"hidden",WebkitFontSmoothing:"antialiased",transition:"background-color 300ms ease,color 300ms ease",position:"relative"}}>
+      <div aria-hidden="true" style={{position:"fixed",inset:0,zIndex:0,pointerEvents:"none",overflow:"hidden"}}>
+        <div style={{position:"absolute",top:"-12%",left:"-8%",width:420,height:420,borderRadius:"50%",background:dark?"radial-gradient(circle,rgba(27,79,140,0.28),transparent 70%)":"radial-gradient(circle,rgba(27,79,140,0.10),transparent 70%)",animation:"ambientDrift 22s ease-in-out infinite"}}/>
+        <div style={{position:"absolute",bottom:"-16%",right:"-10%",width:460,height:460,borderRadius:"50%",background:dark?"radial-gradient(circle,rgba(242,169,0,0.20),transparent 70%)":"radial-gradient(circle,rgba(242,169,0,0.10),transparent 70%)",animation:"ambientDrift 28s ease-in-out infinite reverse"}}/>
+      </div>      <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
         @keyframes fadeIn{from{opacity:0}to{opacity:1}}
         @keyframes slideUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
@@ -871,6 +874,7 @@ function Board({ role, myPersonId, ownerId, session }) {
         @keyframes emptyFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
         @keyframes doneFlash{0%{box-shadow:0 0 0 0 rgba(22,163,74,0.5)}100%{box-shadow:0 0 0 10px rgba(22,163,74,0)}}
         @keyframes ringPulse{0%,100%{opacity:1}50%{opacity:0.55}}
+        @keyframes ambientDrift{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(40px,-30px) scale(1.08)}}
         *{box-sizing:border-box;margin:0;padding:0;}
         ::-webkit-scrollbar{width:5px;height:5px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:${dark?"#334155":"#cbd5e1"};border-radius:3px;}
         input:focus,select:focus,textarea:focus{border-color:#1b4f8c!important;box-shadow:0 0 0 3px rgba(27,79,140,0.14)!important;}
@@ -901,7 +905,7 @@ function Board({ role, myPersonId, ownerId, session }) {
       {/* ── SIDEBAR / DRAWER ── */}
       {(isMobile ? drawerOpen : true) && (<>
         {isMobile && <div style={{position:"fixed",inset:0,zIndex:70,background:"rgba(0,0,0,0.5)"}} onClick={()=>setDrawerOpen(false)}/>}
-        <aside style={{...(isMobile?{position:"fixed",top:0,left:0,bottom:0,zIndex:71,width:280,animation:"drawerIn 250ms cubic-bezier(0.32,0.72,0,1)"}:{width:260,minWidth:260}),background:dark?"#0b1120":"#fff",borderRight:`1px solid ${brd}`,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+        <aside style={{...(isMobile?{position:"fixed",top:0,left:0,bottom:0,zIndex:71,width:280,animation:"drawerIn 250ms cubic-bezier(0.32,0.72,0,1)"}:{width:260,minWidth:260}),background:dark?"#0b1120":"#fff",borderRight:`1px solid ${brd}`,display:"flex",flexDirection:"column",overflow:"hidden",position:"relative",zIndex:1}}>
           {/* logo */}
           <div style={{padding:"20px 20px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:`1px solid ${brd}`}}>
             <div style={{display:"flex",alignItems:"center",gap:10}}>
@@ -977,14 +981,20 @@ function Board({ role, myPersonId, ownerId, session }) {
       </>)}
 
       {/* ── MAIN ── */}
-      <main style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",minWidth:0}}>
+      <main style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",minWidth:0,position:"relative",zIndex:1}}>
         {/* header */}
         <header style={{padding:isMobile?"12px 16px":"16px 24px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:`1px solid ${brd}`,background:dark?"#0b1120":"#fff",gap:12,flexShrink:0,minHeight:isMobile?56:64}}>
           <div style={{display:"flex",alignItems:"center",gap:10,flex:1,minWidth:0}}>
             {isMobile&&<button onClick={()=>setDrawerOpen(true)} aria-label="Open menu" style={{background:"none",border:"none",cursor:"pointer",color:txt2,padding:8,borderRadius:8,minWidth:40,minHeight:40,display:"flex",alignItems:"center",justifyContent:"center"}}><Menu size={22}/></button>}
             <div style={{minWidth:0}}>
-              <h1 style={{fontSize:isMobile?16:20,fontWeight:700,letterSpacing:"-0.02em",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{activePersonName}</h1>
-              {!isMobile&&stats.total>0&&<span style={{fontSize:12,color:txt2}}>{stats.done} of {stats.total} complete ({stats.percent}%){stats.overdue>0&&<span style={{color:"#dc2626",fontWeight:600}}> / {stats.overdue} overdue</span>}{stats.blocked>0&&<span style={{color:"#ef4444",fontWeight:600}}> / {stats.blocked} blocked</span>}</span>}
+                {!isMobile && (
+                <div style={{fontSize:11.5,fontWeight:600,color:txt2,marginBottom:2,letterSpacing:"0.02em"}}>
+                  {(()=>{const h=new Date().getHours();return h<12?"Good morning":h<18?"Good afternoon":"Good evening";})()}
+                </div>
+              )}
+<h1 style={{fontSize:isMobile?16:20,fontWeight:800,letterSpacing:"-0.02em",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",background:dark?"linear-gradient(90deg,#f1f5f9,#f2a900)":"linear-gradient(90deg,#1b4f8c,#f2a900)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text"}}>
+  {activePersonName==="All To-Dos" ? "All To-Dos" : `${activePersonName}'s PutterList`}
+</h1>              {!isMobile&&stats.total>0&&<span style={{fontSize:12,color:txt2}}>{stats.done} of {stats.total} complete ({stats.percent}%){stats.overdue>0&&<span style={{color:"#dc2626",fontWeight:600}}> / {stats.overdue} overdue</span>}{stats.blocked>0&&<span style={{color:"#ef4444",fontWeight:600}}> / {stats.blocked} blocked</span>}</span>}
             </div>
           </div>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -1085,8 +1095,16 @@ function Board({ role, myPersonId, ownerId, session }) {
           <div className="ptl-view" style={{flex:1,overflowY:"auto",padding:isMobile?16:24,paddingBottom:isMobile?"calc(80px + env(safe-area-inset-bottom, 0px))":24}}>
             <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(5,1fr)",gap:isMobile?10:14,marginBottom:24}}>
               {[{label:"Total To-Dos",value:stats.total,icon:LayoutDashboard,color:"#6366f1"},{label:"Active",value:stats.inProgress,icon:Clock,color:"#1b4f8c"},{label:"Blocked",value:stats.blocked,icon:ShieldAlert,color:"#ef4444"},{label:"Resolved",value:stats.done,icon:CheckCircle2,color:"#16a34a"},{label:"Overdue",value:stats.overdue,icon:AlertCircle,color:"#dc2626"}].map(s=>(
-                <div key={s.label} style={{background:cardBg,borderRadius:12,padding:isMobile?"14px 16px":"18px 20px",border:`1px solid ${brd}`}}>
-                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}><span style={{fontSize:11,color:txt2,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.04em"}}>{s.label}</span><s.icon size={16} style={{color:s.color}}/></div>
+                <div key={s.label} style={{background:cardBg,borderRadius:12,padding:isMobile?"14px 16px":"18px 20px",border:`1px solid ${brd}`,position:"relative",overflow:"hidden",transition:"transform 200ms, box-shadow 200ms"}}
+                  onMouseEnter={!isMobile?e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow=`0 10px 30px ${s.color}22`;}:undefined}
+                  onMouseLeave={!isMobile?e=>{e.currentTarget.style.transform="translateY(0)";e.currentTarget.style.boxShadow="none";}:undefined}>
+                  <div style={{position:"absolute",top:0,left:0,right:0,height:3,background:s.color}}/>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+                    <span style={{fontSize:11,color:txt2,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.04em"}}>{s.label}</span>
+                    <div style={{width:28,height:28,borderRadius:8,background:`${s.color}18`,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                      <s.icon size={15} style={{color:s.color}}/>
+                    </div>
+                  </div>
                   <div style={{fontSize:isMobile?22:28,fontWeight:800,color:txt,letterSpacing:"-0.03em"}}><CountUp value={s.value}/></div>
                 </div>
               ))}
