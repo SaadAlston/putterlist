@@ -53,6 +53,35 @@ npm run dev
 Just run `supabase-schema-v2.sql` — it only adds new columns, tables, and
 policies on top of what's there. Nothing destructive.
 
+## Password login
+
+The sign-in screen now has two tabs: Password and Email Link. Either works
+for anyone, admin or member.
+
+**If you already have an account** (signed in before with a magic link),
+the fastest path around email problems: sign in with a link one more time,
+then click Set Password in the sidebar. From then on, sign in with that
+password instead. No email needed.
+
+**If you are brand new**, "Create an account" under the Password tab still
+sends a confirmation email first. This uses the same mail system as the
+Email Link tab, so it hits the same delivery limits if your SMTP setup has
+problems. Password login removes email from every sign-in after the first
+one. It does not remove the first one.
+
+## Managing users from the app
+
+The Dashboard now shows a Manage Users table above the People section,
+listing each joined person's email, join date, and last sign-in.
+
+This requires the `list-users` Edge Function. Deploy it once:
+
+```bash
+supabase functions deploy list-users
+```
+
+No new secrets needed.
+
 ## Personalizing the welcome email
 
 Run `supabase-schema-v3.sql` first, if you haven't. It adds a column that
@@ -96,7 +125,7 @@ several boards. Toggle a checkbox off to revoke access instantly.
 
 ## Removing people
 
-Click the trash icon next to a person's name. This deletes their tickets.
+Click the trash icon next to a person's name. This deletes their to-dos.
 If they already joined, it also deletes their login. They can't sign back in
 with that email and see old data.
 
@@ -124,6 +153,33 @@ VITE_ADMIN_EMAILS=you@example.com
 
 Separate multiple admins with commas. Anyone on this list always gets admin
 access, checked before any database lookup runs.
+
+## Sending invites from the app
+
+Click the link icon next to a person. Enter their email. Click Send Invite.
+PutterList emails them directly through Resend. No copying, no pasting.
+
+You can still skip the email and just grab a link, using "Just give me a
+link" if you want to send it through text or another channel instead.
+
+This requires the `send-invite-email` Edge Function and a Resend API key.
+You already have both if you set up SMTP for the magic link email.
+
+Deploy the function once:
+
+```bash
+supabase functions deploy send-invite-email
+```
+
+Set the secret if you have not already:
+
+```bash
+supabase secrets set RESEND_API_KEY=your-key-here
+supabase secrets set NOTIFY_FROM_EMAIL="PutterList <notify@yourdomain.com>"
+```
+
+Without this set up, "Just give me a link" still works. Only the direct
+email send needs Resend.
 
 ## How invites work
 

@@ -13,19 +13,26 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
 Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
   const authHeader = req.headers.get("Authorization");
   if (!authHeader) {
-    return new Response(JSON.stringify({ error: "Missing Authorization header" }), { status: 401 });
+    return new Response(JSON.stringify({ error: "Missing Authorization header" }), { status: 401, headers: corsHeaders });
   }
 
   const { personId } = await req.json();
   if (!personId) {
-    return new Response(JSON.stringify({ error: "personId required" }), { status: 400 });
+    return new Response(JSON.stringify({ error: "personId required" }), { status: 400, headers: corsHeaders });
   }
 
-  // Verify the caller with their own token, scoped by RLS, to confirm
-  // they actually own this person record before we touch anything.
   const callerClient = createClient(
     Deno.env.get("SUPABASE_URL"),
     Deno.env.get("SUPABASE_ANON_KEY"),
@@ -33,7 +40,7 @@ Deno.serve(async (req) => {
   );
   const { data: { user: caller } } = await callerClient.auth.getUser();
   if (!caller) {
-    return new Response(JSON.stringify({ error: "Invalid session" }), { status: 401 });
+    return new Response(JSON.stringify({ error: "Invalid session" }), { status: 401, headers: corsHeaders });
   }
 
   const { data: person, error: lookupError } = await callerClient
@@ -43,7 +50,7 @@ Deno.serve(async (req) => {
     .single();
 
   if (lookupError || !person || person.owner_id !== caller.id) {
-    return new Response(JSON.stringify({ error: "Not found or not yours" }), { status: 403 });
+    return new Response(JSON.stringify({ error: "Not found or not yours" }), { status: 403, headers: corsHeaders });
   }
 
   const adminClient = createClient(
@@ -54,14 +61,14 @@ Deno.serve(async (req) => {
   if (person.user_id) {
     const { error: deleteAuthError } = await adminClient.auth.admin.deleteUser(person.user_id);
     if (deleteAuthError) {
-      return new Response(JSON.stringify({ error: deleteAuthError.message }), { status: 500 });
+      return new Response(JSON.stringify({ error: deleteAuthError.message }), { status: 500, headers: corsHeaders });
     }
   }
 
   const { error: deletePersonError } = await adminClient.from("people").delete().eq("id", personId);
   if (deletePersonError) {
-    return new Response(JSON.stringify({ error: deletePersonError.message }), { status: 500 });
+    return new Response(JSON.stringify({ error: deletePersonError.message }), { status: 500, headers: corsHeaders });
   }
 
-  return new Response(JSON.stringify({ success: true, authAccountRemoved: !!person.user_id }), { status: 200 });
+  return new Response(JSON.stringify({ success: true, authAccountRemoved: !!person.user_id }), { status: 200, headers: corsHeaders });
 });

@@ -365,6 +365,32 @@ function PersonModal({ person, onSave, onClose, dark, isMobile }) {
   );
 }
 
+function InviteComposeModal({ person, onSend, onClose, dark, isMobile }) {
+  const [email, setEmail] = useState("");
+  const [sending, setSending] = useState(false);
+  const submit = async (withEmail) => {
+    if(sending) return;
+    setSending(true);
+    await onSend(person, withEmail ? email.trim() : null);
+    setSending(false);
+  };
+  return (
+    <ModalShell onClose={onClose} dark={dark} isMobile={isMobile} title={`Invite ${person.name}`} footer={<>
+      <MBtn label="Just give me a link" dark={dark} ghost onClick={()=>submit(false)} disabled={sending}/>
+      <MBtn label={sending?"Sending...":"Send Invite"} onClick={()=>submit(true)} disabled={!email.trim()||sending}/>
+    </>}>
+      <div style={{display:"flex",flexDirection:"column",gap:14}}>
+        <p style={{fontSize:13.5,color:dark?"#94a3b8":"#64748b",lineHeight:1.5}}>
+          Enter {person.name}'s email and PutterList sends the invite for you. Or skip this and copy a link to send yourself.
+        </p>
+        <Fld label="Email" dark={dark}>
+          <input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="them@example.com" style={inp(dark)} autoFocus/>
+        </Fld>
+      </div>
+    </ModalShell>
+  );
+}
+
 function InviteLinkModal({ invite, onClose, dark, isMobile }) {
   const [copied, setCopied] = useState(false);
   const copy = () => {
@@ -373,8 +399,15 @@ function InviteLinkModal({ invite, onClose, dark, isMobile }) {
   return (
     <ModalShell onClose={onClose} dark={dark} isMobile={isMobile} title={`Invite ${invite.personName}`} footer={<MBtn label="Done" onClick={onClose}/>}>
       <div style={{display:"flex",flexDirection:"column",gap:14}}>
+        {invite.emailSent ? (
+          <p style={{fontSize:13.5,color:"#16a34a",fontWeight:600}}>Sent to {invite.sentTo}.</p>
+        ) : invite.sentTo ? (
+          <p style={{fontSize:13.5,color:"#dc2626",fontWeight:600}}>Couldn't email {invite.sentTo}. Copy the link below instead.</p>
+        ) : null}
         <p style={{fontSize:13.5,color:dark?"#94a3b8":"#64748b",lineHeight:1.5}}>
-          Send this link to {invite.personName}. When they sign in, they see only their own to-dos, unless you share another board with them.
+          {invite.emailSent
+            ? `${invite.personName} can also use this link directly.`
+            : `Send this link to ${invite.personName}. When they sign in, they see only their own to-dos, unless you share another board with them.`}
         </p>
         <div style={{display:"flex",gap:8}}>
           <input readOnly value={invite.link} onFocus={e=>e.target.select()} style={{...inp(dark), flex:1, fontSize:12.5}} />
@@ -410,6 +443,49 @@ function ShareBoardModal({ board, people, boardAccess, onToggle, onClose, dark, 
           </label>
         ))}
       </div>
+    </ModalShell>
+  );
+}
+
+function SetPasswordModal({ onClose, dark, isMobile }) {
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+
+  const submit = async () => {
+    if (password.length < 6) { setErr("Use at least 6 characters"); return; }
+    if (password !== confirm) { setErr("Passwords don't match"); return; }
+    setBusy(true); setErr("");
+    const { error } = await supabase.auth.updateUser({ password });
+    setBusy(false);
+    if (error) setErr(error.message);
+    else setDone(true);
+  };
+
+  return (
+    <ModalShell onClose={onClose} dark={dark} isMobile={isMobile} title="Set Password" footer={
+      done
+        ? <MBtn label="Done" onClick={onClose}/>
+        : <><MBtn label="Cancel" dark={dark} ghost onClick={onClose} disabled={busy}/><MBtn label={busy?"Saving...":"Save Password"} onClick={submit} disabled={busy||!password||!confirm}/></>
+    }>
+      {done ? (
+        <p style={{fontSize:14,color:"#16a34a",fontWeight:600}}>Password set. Use it next time you sign in.</p>
+      ) : (
+        <div style={{display:"flex",flexDirection:"column",gap:14}}>
+          <p style={{fontSize:13.5,color:dark?"#94a3b8":"#64748b",lineHeight:1.5}}>
+            Set a password so you can sign in without waiting for an email.
+          </p>
+          <Fld label="New Password" dark={dark}>
+            <input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="At least 6 characters" style={inp(dark)}/>
+          </Fld>
+          <Fld label="Confirm Password" dark={dark}>
+            <input type="password" value={confirm} onChange={e=>setConfirm(e.target.value)} placeholder="Type it again" style={inp(dark)}/>
+          </Fld>
+          {err && <p style={{fontSize:12,color:"#dc2626"}}>{err}</p>}
+        </div>
+      )}
     </ModalShell>
   );
 }
@@ -519,11 +595,27 @@ function Board({ role, myPersonId, ownerId, session }) {
     return () => { document.removeEventListener("touchmove", onMove); document.removeEventListener("touchend", onEnd); };
   }, [dragTask, dropTarget, triggerDone, showToast]);
 
-  const [inviteModal, setInviteModal] = useState(null); // { link, personName }
+  const [inviteModal, setInviteModal] = useState(null); // { link, personName, emailSent, sentTo }
+  const [inviteComposeModal, setInviteComposeModal] = useState(null); // the person being invited
   const [shareModal, setShareModal] = useState(null); // { id, name } of the board being shared
+  const [passwordModal, setPasswordModal] = useState(false);
 
   /* load people + tasks, scoped by RLS automatically */
   const [boardAccess, setBoardAccess] = useState([]); // admin only: [{id, board_person_id, viewer_user_id}]
+  const [userDetails, setUserDetails] = useState({}); // admin only: personId -> {email, lastSignInAt, createdAt}
+
+  const loadUserDetails = useCallback(async () => {
+    if (!isAdmin) return;
+    const { data: { session: cur } } = await supabase.auth.getSession();
+    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/list-users`, {
+      headers: { Authorization: `Bearer ${cur.access_token}` },
+    });
+    if (!res.ok) return;
+    const { users } = await res.json();
+    const map = {};
+    (users || []).forEach(u => { map[u.personId] = u; });
+    setUserDetails(map);
+  }, [isAdmin]);
 
   const hasSetInitialPerson = useRef(false);
 
@@ -557,11 +649,12 @@ function Board({ role, myPersonId, ownerId, session }) {
   useEffect(()=>{
     (async()=>{
       await loadData();
+      loadUserDetails();
       const savedDark = localStorage.getItem("putterlist-theme-override");
       if(savedDark !== null) setDarkOverride(savedDark==="true"?true:savedDark==="false"?false:null);
       setLoaded(true);
     })();
-  },[loadData]);
+  },[loadData,loadUserDetails]);
 
   useEffect(()=>{
     if(darkOverride===null) localStorage.removeItem("putterlist-theme-override");
@@ -693,13 +786,26 @@ function Board({ role, myPersonId, ownerId, session }) {
     }
   },[activePerson,showToast,loadData,people]);
 
-  const createInvite = useCallback(async (person) => {
+  const createInvite = useCallback(async (person, email) => {
     const { data, error } = await supabase.from("invites").insert({
       owner_id: session.user.id, person_id: person.id, owner_email: session.user.email,
+      email: email || null,
     }).select().single();
     if(error || !data){ showToast("Couldn't create invite"); return; }
     const link = `${window.location.origin}/?invite=${data.token}`;
-    setInviteModal({ link, personName: person.name });
+
+    let emailSent = false;
+    if(email){
+      const { data: { session: cur } } = await supabase.auth.getSession();
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-invite-email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${cur.access_token}` },
+        body: JSON.stringify({ email, personName: person.name, link }),
+      });
+      emailSent = res.ok;
+      if(!res.ok) showToast("Link ready, but the email didn't send");
+    }
+    setInviteModal({ link, personName: person.name, emailSent, sentTo: email || null });
   },[session,showToast]);
 
   const toggleBoardAccess = useCallback(async (boardPersonId, viewerUserId, grant) => {
@@ -836,7 +942,7 @@ function Board({ role, myPersonId, ownerId, session }) {
                     {ps&&ps.total>0&&<ProgressRing percent={ps.percent} size={26} stroke={2.5}/>}
                   </button>
                   {isAdmin && !p.isAll && !p.userId && (
-                    <button onClick={()=>createInvite(p)} aria-label={`Invite ${p.name}`} title="Send invite link"
+                    <button onClick={()=>setInviteComposeModal(p)} aria-label={`Invite ${p.name}`} title="Send invite link"
                       style={{background:"none",border:"none",cursor:"pointer",color:txt2,padding:6,borderRadius:6,minWidth:32,minHeight:32,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
                       <Link2 size={15}/>
                     </button>
@@ -864,6 +970,8 @@ function Board({ role, myPersonId, ownerId, session }) {
           </div>
           <div style={{padding:12,borderTop:`1px solid ${brd}`}}>
             <button onClick={()=>setDarkOverride(dark?false:true)} style={{display:"flex",alignItems:"center",gap:10,width:"100%",padding:"11px 12px",borderRadius:8,border:"none",background:"transparent",color:txt2,cursor:"pointer",fontSize:13,textAlign:"left",minHeight:44}}>{dark?<Sun size={16}/>:<Moon size={16}/>}{dark?"Light Mode":"Dark Mode"}</button>
+            <button onClick={()=>setPasswordModal(true)} style={{display:"flex",alignItems:"center",gap:10,width:"100%",padding:"11px 12px",borderRadius:8,border:"none",background:"transparent",color:txt2,cursor:"pointer",fontSize:13,textAlign:"left",minHeight:44}}>Set Password</button>
+            <button onClick={()=>supabase.auth.signOut()} style={{display:"flex",alignItems:"center",gap:10,width:"100%",padding:"11px 12px",borderRadius:8,border:"none",background:"transparent",color:txt2,cursor:"pointer",fontSize:13,textAlign:"left",minHeight:44}}>Sign Out</button>
           </div>
         </aside>
       </>)}
@@ -988,6 +1096,31 @@ function Board({ role, myPersonId, ownerId, session }) {
               <div style={{height:8,borderRadius:4,background:dark?"#1e293b":"#f1f5f9",overflow:"hidden"}}><div style={{height:"100%",borderRadius:4,background:"linear-gradient(90deg,#1b4f8c,#f2a900)",width:`${stats.percent}%`,transition:"width 600ms cubic-bezier(0.4,0,0.2,1)"}}/></div>
             </div>
             {isAdmin && (<>
+            {people.filter(p=>!p.isAll && p.userId).length > 0 && (<>
+              <h3 style={{fontSize:16,fontWeight:700,marginBottom:14,color:txt}}>Manage Users</h3>
+              <div style={{background:cardBg,borderRadius:12,border:`1px solid ${brd}`,overflow:"hidden",marginBottom:24}}>
+                <div style={{display:"grid",gridTemplateColumns:isMobile?"1.2fr 1fr":"1fr 1.4fr 1fr 1fr",gap:8,padding:"10px 16px",borderBottom:`1px solid ${brd}`,fontSize:11,fontWeight:700,color:txt2,textTransform:"uppercase",letterSpacing:"0.04em"}}>
+                  <span>Name</span>
+                  {!isMobile && <span>Email</span>}
+                  <span>Joined</span>
+                  {!isMobile && <span>Last Active</span>}
+                </div>
+                {people.filter(p=>!p.isAll && p.userId).map(p=>{
+                  const detail = userDetails[p.id];
+                  return (
+                    <div key={p.id} style={{display:"grid",gridTemplateColumns:isMobile?"1.2fr 1fr":"1fr 1.4fr 1fr 1fr",gap:8,padding:"12px 16px",borderBottom:`1px solid ${brd}`,alignItems:"center"}}>
+                      <div style={{display:"flex",alignItems:"center",gap:8,minWidth:0}}>
+                        <Avatar name={p.name} size={24}/>
+                        <span style={{fontSize:13.5,color:txt,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</span>
+                      </div>
+                      {!isMobile && <span style={{fontSize:13,color:txt2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{detail?.email || "—"}</span>}
+                      <span style={{fontSize:13,color:txt2}}>{detail?.createdAt ? new Date(detail.createdAt).toLocaleDateString("en-US",{month:"short",day:"numeric"}) : "—"}</span>
+                      {!isMobile && <span style={{fontSize:13,color:txt2}}>{detail?.lastSignInAt ? new Date(detail.lastSignInAt).toLocaleDateString("en-US",{month:"short",day:"numeric"}) : "Never"}</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            </>)}
             <h3 style={{fontSize:16,fontWeight:700,marginBottom:14,color:txt}}>People</h3>
             <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(auto-fill,minmax(280px,1fr))",gap:14}}>
               {people.filter(p=>!p.isAll).map(p=>{const ps=pStats(p.id),pt=tasks.filter(t=>t.personId===p.id);return(
@@ -1010,8 +1143,10 @@ function Board({ role, myPersonId, ownerId, session }) {
 
       {taskModal&&<TaskModal task={taskModal} onSave={saveTask} onClose={()=>setTaskModal(null)} dark={dark} people={people} isMobile={isMobile} ticketNo={taskModal.id?ticketNumbers[taskModal.id]:null} isAdmin={isAdmin}/>}
       {personModal!==null&&<PersonModal person={personModal.id?personModal:null} onSave={savePerson} onClose={()=>setPersonModal(null)} dark={dark} isMobile={isMobile}/>}
+      {inviteComposeModal&&<InviteComposeModal person={inviteComposeModal} onSend={async(p,email)=>{await createInvite(p,email);setInviteComposeModal(null);}} onClose={()=>setInviteComposeModal(null)} dark={dark} isMobile={isMobile}/>}
       {inviteModal&&<InviteLinkModal invite={inviteModal} onClose={()=>setInviteModal(null)} dark={dark} isMobile={isMobile}/>}
       {shareModal&&<ShareBoardModal board={shareModal} people={people} boardAccess={boardAccess} onToggle={toggleBoardAccess} onClose={()=>setShareModal(null)} dark={dark} isMobile={isMobile}/>}
+      {passwordModal&&<SetPasswordModal onClose={()=>setPasswordModal(false)} dark={dark} isMobile={isMobile}/>}
     </div>
   );
 }
@@ -1106,7 +1241,10 @@ class ErrorBoundary extends React.Component {
 
 /* ══════════════════════ LOGIN / INVITE SCREEN ══════════════════════ */
 function LoginScreen({ dark, inviteContext }) {
+  const [mode, setMode] = useState("password"); // "password" | "link"
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isNewAccount, setIsNewAccount] = useState(false);
   const [sent, setSent] = useState(false);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
@@ -1117,23 +1255,44 @@ function LoginScreen({ dark, inviteContext }) {
   const cardBg = dark ? "#1e293b" : "#ffffff";
   const brd = dark ? "#334155" : "#e2e8f0";
 
+  const metadata = {
+    name: inviteContext?.personName || "",
+    invited_by: inviteContext?.ownerEmail || "",
+  };
+  const redirectTo = window.location.origin + (inviteContext ? `/?invite=${inviteContext.token}` : "");
+
   const sendLink = async (e) => {
     e.preventDefault();
     if (!email.trim() || busy) return;
     setBusy(true); setErr("");
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
-      options: {
-        emailRedirectTo: window.location.origin + (inviteContext ? `/?invite=${inviteContext.token}` : ""),
-        data: {
-          name: inviteContext?.personName || "",
-          invited_by: inviteContext?.ownerEmail || "",
-        },
-      },
+      options: { emailRedirectTo: redirectTo, data: metadata },
     });
     setBusy(false);
     if (error) setErr(error.message);
     else setSent(true);
+  };
+
+  const submitPassword = async (e) => {
+    e.preventDefault();
+    if (!email.trim() || !password || busy) return;
+    setBusy(true); setErr("");
+
+    if (isNewAccount) {
+      const { error } = await supabase.auth.signUp({
+        email: email.trim(), password,
+        options: { emailRedirectTo: redirectTo, data: metadata },
+      });
+      setBusy(false);
+      if (error) setErr(error.message);
+      else setSent(true);
+      return;
+    }
+
+    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    setBusy(false);
+    if (error) setErr(error.message);
   };
 
   return (
@@ -1150,7 +1309,7 @@ function LoginScreen({ dark, inviteContext }) {
           </h1>
           {inviteContext ? (
             <p style={{ fontSize: 13, color: txt2, marginTop: 4, textAlign:"center" }}>
-              You've been invited to <strong style={{color:txt}}>{inviteContext.personName}</strong>'s board.<br/>Sign in to see your tasks.
+              You've been invited to <strong style={{color:txt}}>{inviteContext.personName}</strong>'s board.<br/>Sign in to see your to-dos.
             </p>
           ) : (
             <p style={{ fontSize: 13, color: txt2, marginTop: 4 }}>Turn your to-do list into done.</p>
@@ -1159,24 +1318,64 @@ function LoginScreen({ dark, inviteContext }) {
 
         {sent ? (
           <div style={{ textAlign: "center", padding: "12px 0" }}>
-            <p style={{ fontSize: 14, color: txt, fontWeight: 600, marginBottom: 6 }}>Check your inbox</p>
-            <p style={{ fontSize: 13, color: txt2, marginBottom: 16 }}>We sent a sign-in link to {email}</p>
-            <button onClick={()=>setSent(false)} style={{ background: "none", border: "none", color: "#1b4f8c", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-              Use a different email
+            <p style={{ fontSize: 14, color: txt, fontWeight: 600, marginBottom: 6 }}>
+              {mode === "password" ? "Confirm your email" : "Check your inbox"}
+            </p>
+            <p style={{ fontSize: 13, color: txt2, marginBottom: 16 }}>
+              {mode === "password"
+                ? `We sent a confirmation link to ${email}. Click it, then come back and sign in with your password.`
+                : `We sent a sign-in link to ${email}`}
+            </p>
+            <button onClick={()=>{setSent(false);setIsNewAccount(false);}} style={{ background: "none", border: "none", color: "#1b4f8c", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+              Back to sign in
             </button>
           </div>
         ) : (
-          <form onSubmit={sendLink} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <input
-              type="email" required value={email} onChange={e => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              style={{ width: "100%", padding: "12px 14px", borderRadius: 10, fontSize: 14, border: `1px solid ${brd}`, background: dark ? "#0f172a" : "#f8fafc", color: txt, outline: "none", boxSizing: "border-box" }}
-            />
-            {err && <p style={{ fontSize: 12, color: "#dc2626" }}>{err}</p>}
-            <button type="submit" disabled={busy} style={{ padding: "12px 0", borderRadius: 10, border: "none", background: "#1b4f8c", color: "#fff", fontSize: 14, fontWeight: 600, cursor: busy ? "default" : "pointer", opacity: busy ? 0.6 : 1 }}>
-              {busy ? "Sending..." : "Send sign-in link"}
-            </button>
-          </form>
+          <>
+            <div style={{ display: "flex", borderRadius: 10, background: dark?"#0f172a":"#f1f5f9", padding: 3, marginBottom: 16 }}>
+              {[{id:"password",label:"Password"},{id:"link",label:"Email Link"}].map(t=>(
+                <button key={t.id} onClick={()=>{setMode(t.id);setErr("");setIsNewAccount(false);}} style={{
+                  flex: 1, padding: "8px 0", borderRadius: 8, border: "none", cursor: "pointer",
+                  background: mode===t.id ? "#1b4f8c" : "transparent",
+                  color: mode===t.id ? "#fff" : txt2, fontSize: 13, fontWeight: 600, transition: "all 150ms",
+                }}>{t.label}</button>
+              ))}
+            </div>
+
+            {mode === "password" ? (
+              <form onSubmit={submitPassword} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <input
+                  type="email" required value={email} onChange={e => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  style={{ width: "100%", padding: "12px 14px", borderRadius: 10, fontSize: 14, border: `1px solid ${brd}`, background: dark ? "#0f172a" : "#f8fafc", color: txt, outline: "none", boxSizing: "border-box" }}
+                />
+                <input
+                  type="password" required value={password} onChange={e => setPassword(e.target.value)}
+                  placeholder={isNewAccount ? "Create a password" : "Password"}
+                  style={{ width: "100%", padding: "12px 14px", borderRadius: 10, fontSize: 14, border: `1px solid ${brd}`, background: dark ? "#0f172a" : "#f8fafc", color: txt, outline: "none", boxSizing: "border-box" }}
+                />
+                {err && <p style={{ fontSize: 12, color: "#dc2626" }}>{err}</p>}
+                <button type="submit" disabled={busy} style={{ padding: "12px 0", borderRadius: 10, border: "none", background: "#1b4f8c", color: "#fff", fontSize: 14, fontWeight: 600, cursor: busy ? "default" : "pointer", opacity: busy ? 0.6 : 1 }}>
+                  {busy ? "Please wait..." : (isNewAccount ? "Create Account" : "Sign In")}
+                </button>
+                <button type="button" onClick={()=>{setIsNewAccount(!isNewAccount);setErr("");}} style={{ background: "none", border: "none", color: txt2, fontSize: 12.5, cursor: "pointer" }}>
+                  {isNewAccount ? "Already have an account? Sign in" : "New here? Create an account"}
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={sendLink} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <input
+                  type="email" required value={email} onChange={e => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  style={{ width: "100%", padding: "12px 14px", borderRadius: 10, fontSize: 14, border: `1px solid ${brd}`, background: dark ? "#0f172a" : "#f8fafc", color: txt, outline: "none", boxSizing: "border-box" }}
+                />
+                {err && <p style={{ fontSize: 12, color: "#dc2626" }}>{err}</p>}
+                <button type="submit" disabled={busy} style={{ padding: "12px 0", borderRadius: 10, border: "none", background: "#1b4f8c", color: "#fff", fontSize: 14, fontWeight: 600, cursor: busy ? "default" : "pointer", opacity: busy ? 0.6 : 1 }}>
+                  {busy ? "Sending..." : "Send sign-in link"}
+                </button>
+              </form>
+            )}
+          </>
         )}
       </div>
     </div>
