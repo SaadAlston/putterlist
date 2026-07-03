@@ -905,7 +905,7 @@ function Board({ role, myPersonId, ownerId, session }) {
       {/* ── SIDEBAR / DRAWER ── */}
       {(isMobile ? drawerOpen : true) && (<>
         {isMobile && <div style={{position:"fixed",inset:0,zIndex:70,background:"rgba(0,0,0,0.5)"}} onClick={()=>setDrawerOpen(false)}/>}
-        <aside style={{...(isMobile?{position:"fixed",top:0,left:0,bottom:0,zIndex:71,width:280,animation:"drawerIn 250ms cubic-bezier(0.32,0.72,0,1)"}:{width:260,minWidth:260}),background:dark?"#0b1120":"#fff",borderRight:`1px solid ${brd}`,display:"flex",flexDirection:"column",overflow:"hidden",position:"relative",zIndex:1}}>
+        <aside style={{...(isMobile?{position:"fixed",top:0,left:0,bottom:0,zIndex:71,width:280,animation:"drawerIn 250ms cubic-bezier(0.32,0.72,0,1)"}:{width:260,minWidth:260,position:"relative",zIndex:1}),background:dark?"#0b1120":"#fff",borderRight:`1px solid ${brd}`,display:"flex",flexDirection:"column",overflow:"hidden"}}>
           {/* logo */}
           <div style={{padding:"20px 20px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:`1px solid ${brd}`}}>
             <div style={{display:"flex",alignItems:"center",gap:10}}>
